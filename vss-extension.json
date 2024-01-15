@@ -1,0 +1,108 @@
+{
+    "manifestVersion": 1,
+    "id": "HistoryDiff",
+    "publisher": "Sedenion",
+    "version": "0.1.0.0",
+    "name": "History Diff",
+    "description": "Azure DevOps extension to show the history of work item fields with proper diffs.",
+    "public": false,
+    "icons": {
+        "default": "images/icon.png"
+    },
+    "categories": ["Azure Boards"],
+    "tags": [
+        "history",
+        "diff",
+        "changes",
+        "work item",
+        "work item history",
+        "work item changes"
+    ],
+    "content": {
+        "details": {
+            "path": "overview.md"
+        }
+    },
+    "links": {
+        "getstarted": {
+            "uri": "https://github.com/Sedeniono/ADO-History-Diff"
+        },
+        "support": {
+            "uri": "https://github.com/Sedeniono/ADO-History-Diff/issues"
+        },
+        "license": {
+            "uri": "https://github.com/Sedeniono/ADO-History-Diff/blob/main/LICENSE"
+        },
+        "learn": {
+            "uri": "https://github.com/Sedeniono/ADO-History-Diff"
+        }
+    },
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/Sedeniono/ADO-History-Diff"
+    },
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "demands": [
+        "api-version/5.0"
+    ],
+    "contributions": [
+        {  
+            "id": "historydiff",
+            "type": "ms.vss-work-web.work-item-form-page",
+            "description": "Tab to show the history of work item fields with proper diffs.",
+            "targets": [
+                "ms.vss-work-web.work-item-form"
+            ],
+            "properties": {
+                "name": "History",
+                "uri": "historydiff.html"
+            } 
+        }
+    ],
+    "scopes": [ 
+        "vso.work" 
+    ],
+    "files": [
+        {
+            "path": "historydiff.html",
+            "addressable": true
+        },
+        {
+            "path": "HistoryDiffPageScript.js",
+            "addressable": true
+        },        
+        {
+            "path": "node_modules/azure-devops-extension-sdk",
+            "addressable": true,
+            "packagePath": "lib"
+        }, 
+        {
+            "path": "node_modules/azure-devops-extension-api",
+            "addressable": true,
+            "packagePath": "api"
+        },
+        {
+            "path": "node_modules/whatwg-fetch/dist/fetch.umd.js",
+            "addressable": true,
+            "packagePath": "whatwg-fetch/dist/fetch.umd.js"
+        },
+        {
+            "path": "node_modules/requirejs",
+            "addressable": true,
+            "packagePath": "requirejs"
+        },
+        {
+            "path": "node_modules/node-htmldiff/js/htmldiff.js",
+            "addressable": true,
+            "packagePath": "htmldiff/htmldiff.js"
+        },
+        {
+            "path": "images/HistoryComparison.png",
+            "addressable": true
+        }
+    ]
+}

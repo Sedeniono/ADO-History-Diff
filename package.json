@@ -1,0 +1,9 @@
+{
+  "name": "historydiff",
+  "dependencies": {
+    "azure-devops-extension-api": "^4.227.0",
+    "azure-devops-extension-sdk": "^4.0.2",
+    "node-htmldiff": "^0.9.4",
+    "requirejs": "^2.3.6"
+  }
+}

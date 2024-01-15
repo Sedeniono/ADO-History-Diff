@@ -1,0 +1,668 @@
+/*
+MIT License
+
+Copyright (c) 2024 Sedenion
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+GitHub link: https://github.com/Sedeniono/ADO-History-Diff
+*/
+
+var gAdoSDK;
+var gAdoAPI;
+var gHtmlDiff;
+var gWorkItemFormServiceId;
+var gWorkItemTracking;
+
+// WorkItemTrackingRestClient: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient
+var gWorkItemRESTClient;
+
+// An enum that holds the known field types. E.g. gFieldTypeEnum.Html === 4.
+// It is basically https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/fieldtype,
+// except that this documentation is incorrect (it shows the wrong numerical ids). (Apparently, the enum 'FieldType'
+// exists several times in the API with different definitions, and the tool that creates the documentation cannot handle it?) 
+// The correct one is this:
+// https://github.com/microsoft/azure-devops-node-api/blob/fa534aef7d79ab4a30ae2b8823654795b6eed1aa/api/interfaces/WorkItemTrackingInterfaces.ts#L460
+var gFieldTypeEnum;
+
+var gUnloadedCalled = false;
+
+
+const gReplaceEntityMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '/': '&#x2F;',
+    '`': '&#x60;',
+    '=': '&#x3D;'
+  };
+  
+// Escapes some piece of text so that it can be safely put into an html element.
+// https://stackoverflow.com/a/12034334/3740047
+function EscapeHtml(string) {
+    return String(string).replace(/[&<>"'`=\/]/g, function (s) {
+        return gReplaceEntityMap[s];
+    });
+}
+
+
+function GetHtmlDisplayField()
+{
+    return document.getElementById('htmlDivDiff');
+}
+
+
+function SetHtmlToLoading()
+{
+    GetHtmlDisplayField().innerHTML = '<b>Loading history...</b>';
+}
+
+
+function FormatDate(date)
+{
+    const dateFormatOptions = {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false};
+    return date.toLocaleDateString(undefined, dateFormatOptions);
+}
+
+
+function GetIdentityName(identity) 
+{
+    return EscapeHtml(identity?.displayName ?? 'UNKNOWN NAME');
+}
+
+
+function GetIdentityAvatarHtml(identity) 
+{
+    // According to the documentation (https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/identityreference),
+    // 'imageUrl' is deprecated and '_links.avatar' should be used.
+    const avatarUrl = identity?._links?.avatar?.href ?? '';
+    const avatarHtml = avatarUrl ? `<img src="${avatarUrl}" class="inlineAvatar" alt="Avatar">` : '';
+    return avatarHtml;
+}
+
+
+function FormatIdentityForFieldDiff(identity)
+{
+    if (!identity) {
+        return null;
+    }
+
+    const changedByName = GetIdentityName(identity);
+    if (!changedByName) {
+        return 'UNKNOWN_NAME';
+    }
+
+    const avatarHtml = GetIdentityAvatarHtml(identity);
+    return `${avatarHtml} ${changedByName}`
+}
+
+
+function CreateHTMLFromRevisionUpdates(revisionUpdates, fieldsPropertiesMap) 
+{
+    let s = '';
+
+    for (let revIdx = revisionUpdates.length - 1; revIdx >= 0; --revIdx) {
+        // revUpdate = WorkItemUpdate: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemupdate
+        const revUpdate = revisionUpdates[revIdx];
+        if (!revUpdate) {
+            continue;
+        }
+
+        s += '<hr><div>';
+        s += CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate);
+        s += '</div>';
+    }
+
+    return s;
+}
+
+
+const hiddenFields = [
+    // These change in every revision.
+    'System.Rev', 'System.AuthorizedDate', 'System.RevisedDate', 'System.ChangedDate', 'System.Watermark',
+    // Fields that are sufficiently represented by the 'System.AreaPath' field.
+    'System.AreaId', 'System.NodeName',
+    // Fields that are sufficiently represented by the 'System.IterationPath' field.
+    'System.IterationId',
+    // The work item ID is pretty clear to the user, no need to show it.
+    'System.Id', 
+    // Further things that seem unnecessary.
+    'Microsoft.VSTS.Common.StateChangeDate', 'System.IsDeleted', 'System.CommentCount', 'System.PersonId', 'System.AuthorizedAs',
+    'System.ChangedBy', 'System.CreatedBy'
+];
+
+
+function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
+{
+    // The work item revision 'revUpdate.rev' seems to get incremented only when a field changes. The 'id' gets 
+    // incremented also when a relation is changed.
+    const idNumber = EscapeHtml(revUpdate.id);
+
+    const changedByName = GetIdentityName(revUpdate.revisedBy);
+    const avatarHtml = GetIdentityAvatarHtml(revUpdate.revisedBy);
+
+    // For some reason, 'revUpdate.revisedDate' contains the year 9999 for the newest revision, so we use the 'System.ChangedDate' field.
+    // I have also seen intermediate revisions having this problem.
+    // Exception: If only a relation is changed but not a field, then 'System.ChangedDate' does not exist. But 'revUpdate.revisedDate' 
+    // then seems to contain the correct value.
+    const rawChangedDate = revUpdate.fields?.['System.ChangedDate']?.newValue ?? revUpdate.revisedDate;
+    const changedDate = rawChangedDate ? FormatDate(rawChangedDate) : 'an unknown date';
+
+    let s = `<div class="changeHeader">${idNumber}. ${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>:</div>`;
+
+    let tableRows = [];
+    if (revUpdate.fields) {
+        for (const [fieldReferenceName, value] of Object.entries(revUpdate.fields)) {
+            if (hiddenFields.indexOf(fieldReferenceName) >= 0 
+                // 'AreaLevel1', 'AreaLevel2', etc. are sufficiently represented by the 'System.AreaPath' field.
+                || fieldReferenceName.indexOf('System.AreaLevel') >= 0
+                // 'IterationLevel1', 'IterationLevel2', etc. are sufficiently represented by the 'System.AreaPath' field.
+                || fieldReferenceName.indexOf('System.IterationLevel') >= 0) {
+                continue;
+            }
+
+            // Note that some field types that we can get from the WorkItemTrackingRestClient.getUpdates() function do not appear in 
+            // the map of known types. I have seen e.g. WEF_2091CE2F93FB4861B19151BC9013A908_Kanban.Column.
+            // No idea what these additional fields are for, but it seems that they are duplicates of other fields?
+            // For the above 'Kanban' example, there is also 'System.BoardColumn' with apparently the same information?
+            // For simplicity, we won't display them (because what should we display as 'friendly' field name?).
+            if (!fieldsPropertiesMap.hasOwnProperty(fieldReferenceName)) {
+                console.log(`HistoryDiff: Revision ${revUpdate.rev} (change date: ${changedDate}) contains unknown field '${fieldReferenceName}'. Not showing its changes.`);
+                continue;
+            }
+        
+            const fieldDiff = GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value);
+            if (fieldDiff) {
+                // Note: The key of the properties (i.e. the 'fieldReferenceName') is the 'referenceName' of the field type from the
+                // WorkItemField interface (https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemfield#azure-devops-extension-api-workitemfield-referencename).
+                // It is some identifier not intended for display. So we get a better name from the API.
+                const friendlyFieldName = GetFriendlyFieldName(fieldsPropertiesMap, fieldReferenceName);
+                if (friendlyFieldName) {
+                    tableRows.push([friendlyFieldName, fieldDiff]);
+                }
+            }
+        }
+    }
+
+    if (revUpdate.relations) {
+        // TODO: What about the comment on a relation? Show it? What about that comment's history?
+        if (revUpdate.relations.added) {
+            for (const relation of revUpdate.relations.added) {
+                const [friendlyName, change] = GetUserFriendlyStringsOfRelationChange(relation);
+                if (typeof friendlyName !== 'undefined') {
+                    tableRows.push([`Link added: ${friendlyName}`, `<ins>${change}</ins>`]);
+                }
+            }
+        }
+        if (revUpdate.relations.removed) {
+            for (const relation of revUpdate.relations.removed) {
+                const [friendlyName, change] = GetUserFriendlyStringsOfRelationChange(relation);
+                if (typeof friendlyName !== 'undefined') {
+                    tableRows.push([`Link removed: ${friendlyName}`, `<del>${change}</del>`]);
+                }
+            }                
+        }
+        // Note: I couldn't find a case where the 'relations.updated' array exists.
+        // There is this REST API: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/update?view=azure-devops-server-rest-5.0&tabs=HTTP#update-a-link
+        // But trying it, either that API throws an error, or ignores requested changes to the links, or it does
+        // change a few things (especially the link's comment) but then the change does not appear in the 'updated' 
+        // array anyway. Also see: https://developercommunity.visualstudio.com/t/unable-to-update-a-hyperlink-in-a-work-item-via-re/1037054
+        if (revUpdate.relations.updated) {
+            for (const relation of revUpdate.relations.updated) {
+                const [friendlyName, change] = GetUserFriendlyStringsOfRelationChange(relation);
+                if (typeof friendlyName !== 'undefined') {
+                    tableRows.push([`Link updated: ${friendlyName}`, `<ins>${change}</ins>`]);
+                }
+            }
+        }
+    }
+
+    if (tableRows) {
+        tableRows.sort((a, b) => a[0].localeCompare(b[0]));
+
+        tableRowsStr = '';
+        for (const [friendlyName, diff] of tableRows) {
+            tableRowsStr += `<tr><td>${friendlyName}</td><td>${diff}</td></tr>`
+        }
+        s += `<table><thead><tr><th>Field</th><th>Content</th></tr></thead><tbody>${tableRowsStr}</tbody></table>`;
+    }
+    else {
+        s += '<p>No changes that can be displayed.</p>';
+    }
+
+    return s;
+}
+
+
+// Returns [friendlyName, value], where 'friendlyName' is a user displayable name of the given relation, and
+// the 'value' is a string containing the displayable value of the relation.
+function GetUserFriendlyStringsOfRelationChange(relation)
+{
+    if (!relation) {
+        return undefined;
+    }
+
+    // Compare https://learn.microsoft.com/en-us/azure/devops/boards/queries/link-type-reference for some information on the possible
+    // values of 'relation.rel'.
+    const relType = relation.rel;
+    if (relType === 'Hyperlink') {
+        const friendlyName = 'Hyperlink';
+        const value = `<a href="${relation.url}" target="_parent">${EscapeHtml(relation.url)}</a>`;
+        return [friendlyName, value];
+    }
+    else if (relType === 'ArtifactLink') {
+        // Link to some repository artifact (commit, pull request, branch, etc.), build artifact, wiki page, etc.
+
+        const friendlyName = relation.attributes?.name;
+
+        // TODO: Need to figure out how to convert the relation.url to a user friendly link. I think we need to parse it.
+        // See e.g. https://developercommunity.visualstudio.com/t/artifact-uri-format-in-external-link-of-work-items/964448
+        // The relation.url is e.g.: 
+        //  - Repo link: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
+        //  - Build link: vstfs:///Build/Build/1
+        //  - Wiki page: vstfs:///Wiki/WikiPage/2d63f741-0ba0-4bc6-b730-896745fab2c0%2F201005d4-3f97-4766-9b82-b69c89972e64%2FFirst%20wiki%20page
+        const value = '(Showing the change is not supported.)';
+        return [friendlyName, value];
+    }
+    else if (relType === 'AttachedFile') {
+        const friendlyName = 'Attachment';
+        const rawFilename = relation.attributes?.name;
+        if (rawFilename) {
+            const filename = EscapeHtml(rawFilename);
+            // TODO: The filename on the server (i.e. the file pointed to by relation.url) is some GUID. So browsers will download the file
+            // with that GUID as filename. The 'download' attribute of <a> should change the filename of the downloaded file to the correct one, but
+            // this did not work in my tests (neither in Edge nor Firefox). Googling this, usually there are 2 reasons why this happens: First, 
+            // when the url has a different origin. But this is not the case here. (The relation.url is absolute, but even converting it to
+            // a relative one does not help in my tests.) Second, if the http header of the download contains the 'Content-Disposition'
+            // header with a 'filename'. The 'Content-Disposition' is actually set by ADO, but without a filename, so I think this is also
+            // not the reason. Weird.
+            const value = `<a href="${relation.url}" download="${rawFilename}">${filename}</a>`;
+            return [friendlyName, value];
+        }
+        else {
+            return [friendlyName, '(Unknown file.)'];
+        }
+    }
+
+    // For work item links, the relation.rel value can be one of quite a bunch. So we detect it by the relation.url.
+    // E.g.: http://<host>/DefaultCollection/2d63f741-0ba0-4bc6-b730-896745fab2c0/_apis/wit/workItems/2
+    const workItemApiFragment = '/_apis/wit/workItems/';
+    const apiURL = String(relation.url);
+    const workItemFragmentIdx = apiURL.indexOf(workItemApiFragment);
+    if (workItemFragmentIdx >= 0 && apiURL.indexOf('http') == 0) {
+        const friendlyName = relation.attributes?.name;
+        const linkedItemNumber = apiURL.substring(workItemFragmentIdx + workItemApiFragment.length);
+        const linkName = EscapeHtml(`Work item #${linkedItemNumber}`);
+        // 'relation.url' contains the REST API link. There seems to be no official API to convert it to a link that
+        // the user can click properly. But a simple replacement does the job.
+        const userFriendlyURL = apiURL.replace(workItemApiFragment, '/_workitems/edit/');
+        const value = `<a href="${userFriendlyURL}" target="_parent">${linkName}</a>`;
+        return [friendlyName, value];
+    }
+    
+    // TODO: Haven't tested github links, remote work links types (links between organizations), links to storyboards, links to tests.
+    return ['(Unsupported link type)', '(Showing the change is not supported.)'];
+}
+
+
+function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
+{
+    if (typeof value?.oldValue === 'undefined' && typeof value?.newValue === 'undefined') {
+        return undefined;
+    }
+
+    if (fieldReferenceName === 'Microsoft.VSTS.TCM.Steps') {
+        // The steps of a test case show up as a field of type 'gFieldTypeEnum.Html', which is lie. It does not contain valid html that 
+        // a browser can display. It seems to be simply XML, with each individual step description being (escaped) html.
+        // TODO: Can we still show a meaningful proper diff?
+        // https://devblogs.microsoft.com/devops/how-to-use-test-step-using-rest-client-helper/
+        // https://oshamrai.wordpress.com/2019/05/11/azure-devops-services-rest-api-14-create-and-add-test-cases-2/
+        return '(Showing the diff of test case steps is not supported.)';
+    }
+
+    // Azure DevOps (at least 2019) reports identities (e.g. the 'System.CreatedBy' field) as 'gFieldTypeEnum.String', but the 'isIdentity' flag is set.
+    // An identity is probably an 'IdentityReference': https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/identityreference
+    let fieldType = fieldsPropertiesMap?.[fieldReferenceName]?.type;
+    if (fieldsPropertiesMap?.[fieldReferenceName]?.isIdentity) {
+        fieldType = gFieldTypeEnum.Identity;
+    }
+    // Note for picklists: It seems that they are used only for user-added fields. They appear as combox boxes.
+    // Similar to identities, picklists are also identified via an additional flag in the 'WorkItemField' interface. So PicklistString,
+    // PicklistDouble and PicklistInteger shouldn't appear in the switch below. Moreover, for some reason the 'isPicklist' property is missing 
+    // in the elements returned by IWorkItemFormService.getFields() (https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemformservice#azure-devops-extension-api-iworkitemformservice-getfields).
+    // i.e. in the data stored in 'fieldsPropertiesMap'. Fortunately, we do not really need to know whether it is a picklist or not: We can
+    // simply treat picklists as a string/integer/double.
+
+    switch (fieldType) {
+        case gFieldTypeEnum.Html:
+        case gFieldTypeEnum.History: // 'History' means the comments.
+        {
+            const oldValue = value.oldValue ?? '';
+            const newValue = value.newValue ?? '';
+            return gHtmlDiff(oldValue, newValue);
+        }
+
+        case gFieldTypeEnum.String:
+        case gFieldTypeEnum.PlainText:
+        {
+            const oldValue = value.oldValue ?? '';
+            const newValue = value.newValue ?? '';
+            // We simply feed htmldiff the values with escaped special characters, meaning that htmldiff should not see any HTML elements.
+            // Using a different diff-library (jsdiff or diff-match-patch) is not worth the additional dependency, since the only work item
+            // fields that contain a significant amount of text are html elements. (Plain text or string fields do not support multiple lines.)
+            return gHtmlDiff(EscapeHtml(oldValue), EscapeHtml(newValue));
+        }
+
+        case gFieldTypeEnum.Integer:
+        case gFieldTypeEnum.PicklistInteger: // See note above: Shouldn't appear, but if it does, can be treated as integer.
+        case gFieldTypeEnum.Double:
+        case gFieldTypeEnum.PicklistDouble: // See note above: Shouldn't appear, but if it does, can be treated as double.
+        case gFieldTypeEnum.PicklistString: // See note above: Shouldn't appear, but if it does, can be treated as string.
+        case gFieldTypeEnum.Guid: // Guids are given as plain strings.
+        case gFieldTypeEnum.Boolean:
+        case gFieldTypeEnum.TreePath:
+            return (value.hasOwnProperty('oldValue') ? `<del>${EscapeHtml(value.oldValue)}</del>` : '') 
+                + (value.hasOwnProperty('newValue') ? `<ins>${EscapeHtml(value.newValue)}</ins>` : '');
+
+        case gFieldTypeEnum.DateTime:
+            return (value.hasOwnProperty('oldValue') ? `<del>${FormatDate(value.oldValue)}</del>` : '') 
+                + (value.hasOwnProperty('newValue') ? `<ins>${FormatDate(value.newValue)}</ins>` : '');
+
+        case gFieldTypeEnum.Identity:
+            return (value.hasOwnProperty('oldValue') ? `<del>${FormatIdentityForFieldDiff(value.oldValue)}</del>` : '') 
+                + (value.hasOwnProperty('newValue') ? `<ins>${FormatIdentityForFieldDiff(value.newValue)}</ins>` : '');
+
+        default:
+            console.log(`HistoryDiff: Unknown field type '${fieldType}' (${gFieldTypeEnum?.[fieldType]}), oldValueType: ${typeof value.oldValue}, newValueType: ${typeof value.newValue}`);
+            return undefined;
+    }
+}
+
+
+function GetFriendlyFieldName(fieldsPropertiesMap, fieldReferenceName) 
+{
+    // The 'System.History' field represents the comments, but is named 'history' (probably for historic reasons).
+    if (fieldReferenceName === 'System.History') {
+        return 'Comments';
+    }
+
+    return fieldsPropertiesMap?.[fieldReferenceName].name;
+}
+
+
+// Returns a promise for an array of 'WorkItemUpdate': https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemupdate
+// Each 'WorkItemUpdate' element contains information about the difference to the previous revision.
+async function GetAllRevisionUpdates(workItemId)
+{
+    // projectService = IProjectPageService: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectpageservice
+    const projectService = await gAdoSDK.getService(gAdoAPI.CommonServiceIds['ProjectPageService']);
+
+    // project = IProjectInfo: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectinfo
+    const project = await projectService.getProject();
+
+    // getRevisions(): https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient#azure-devops-extension-api-workitemtrackingrestclient-getrevisions
+    //   3rd parameter 'top': How many work items to get from the beginning. E.g. top=5 gets the 5 earliest revisions.
+    //   4th parameter 'skip': How many work items to skip at the beginning. E.g. skip=5 skips the earliest 5 revisions.
+    //   5th parameter 'expand': https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemexpand
+    //      Most additional information looks uninteresting.
+    //      Except maybe the parameter 'Relations'=1, which seems to include changes in the 'related to' links.
+    // Resulting REST queries:
+    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/2/revisions
+    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/2/revisions?%24top=5
+    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/2/revisions?%24skip=3
+    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/3/revisions?%24expand=1
+    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/3/revisions?%24top=3&%24skip=4
+    //return gWorkItemRESTClient.getRevisions(workItemId, project.name);
+
+    // getUpdates(): https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient#azure-devops-extension-api-workitemtrackingrestclient-getupdates
+    // Examples of a resulting REST query:
+    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/4/updates
+    // Otherwise behaves the same as getRevisions().
+    //
+    // ADO usually returns at most 200 elements. So we need a loop that successively requests elements, until ADO no longer
+    // sends us any more elements.
+    // TODO: Maybe using actual pages would be nicer for the user/bandwidth if there are many updates. But I guess it is very rare
+    // that any work item has thousands of updates?
+    let all = [];
+    while (true) {
+        const skip = all.length;
+        const curBatch = await gWorkItemRESTClient.getUpdates(workItemId, project.name, undefined, skip);
+        if (!curBatch || !curBatch.hasOwnProperty('length') || curBatch.length == 0) {
+            break;
+        }
+
+        all.push.apply(all, curBatch);
+    }
+    
+    return all;
+}
+
+
+// Returns an object, where the property name is the work-item-field-type's referenceName such as 'System.Description', and the value is
+// a WorkItemField: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemfield
+async function GetMapOfFieldProperties(workItemFormService)
+{
+    // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemformservice#azure-devops-extension-api-iworkitemformservice-getfields
+    //
+    // More or less corresponds to a REST request such as:
+    // http://<host>/DefaultCollection/TestProject/_apis/wit/fields (compare https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/fields/list)
+    // (there is also e.g. http://<host>/DefaultCollection/TestProject/_apis/wit/workitemtypes/issue/fields, 
+    // https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-item-types-field/list, but I don't think that this is the one underlying here.)
+    //
+    // Note that getFields() doesn't actually seem to issue a REST request because the information is already on the client.
+    const propertiesOfAllFields = await workItemFormService.getFields();
+
+    let map = {};
+    for (const fieldProp of propertiesOfAllFields) {
+        if (fieldProp?.referenceName) {
+            map[fieldProp.referenceName] = fieldProp;
+        }
+    }
+
+    return map;
+}
+
+
+async function LoadAndSetDiffInHTMLDocument()
+{
+    SetHtmlToLoading();
+
+    // workItemFormService = IWorkItemFormService 
+    // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemformservice
+    // Note stored as global variable during initialization because the instance is tied to a certain work item,
+    // and when the 'onLoaded' event is called, we might have switched to another work item. So need to get it again.
+    const workItemFormService = await gAdoSDK.getService(gWorkItemFormServiceId);
+
+    const workItemId = await workItemFormService.getId();    
+    const fieldsPropertiesMap = await GetMapOfFieldProperties(workItemFormService);
+
+    const revisionUpdates = await GetAllRevisionUpdates(workItemId);
+    const htmlString = CreateHTMLFromRevisionUpdates(revisionUpdates, fieldsPropertiesMap);
+
+    GetHtmlDisplayField().innerHTML = htmlString;
+}
+
+
+async function IsDarkModeActive()
+{
+    // It would be awesome if we could have simply used the css '@media (prefers-color-scheme: dark)' feature. However,
+    // this queries the browser setting regarding light or dark theme. But ADO ignores that setting, and instead
+    // comes with a custom one. Sigh...
+    //
+    // We could ignore this and simply use the browser setting, assuming that a user enabling dark mode in the browser also
+    // enabled dark mode in ADO. But this is probably a wrong assumption: ADO always displays a white background while 
+    // editing a work item description, even if dark mode is enabled in the ADO settings, and thus 'flashes' the user with 
+    // a big white box. ADO dark mode also has other problems (e.g. https://developercommunity.visualstudio.com/t/dark-mode-theme-should-display-font-colors-and-hig/1046206).
+    // Thus I guess that a significant amount of dark-mode-users still choose to use the light mode in ADO.
+    // 
+    // There are also some css properties available from ADO: https://developer.microsoft.com/en-us/azure-devops/develop/styles
+    // They come with different values for light and dark mode. Indeed, we do use some of them (see the '<style>' element in 
+    // the html head). But for the '<ins>' and '<del>' elements I couldn't find anything that looks good in both light and dark mode.
+    // 
+    // So we need to detect light or dark mode dynamically instead of using the css feature. Unfortunately, 
+    // there is no documented REST API to query the theme setting in ADO. We could use an undocumented API 
+    // (https://stackoverflow.com/q/67775752/3740047, https://stackoverflow.com/q/61075867/3740047), but then we 
+    // would need additional rights to read the user settings (scope 'vso.settings'). Using an undocumented API and requiring
+    // additional rights seems like a bad choice. 
+    //
+    // There is also 'gAdoSDK.getPageContext().globalization.theme', but 'getPageContext()' always threw an error for me, 
+    // complaining about init() not having finished (although it should have).
+    //
+    // So instead we simply read the text color and guess the theme from there. The main disadvantage here is that this method
+    // hinges upon the UI already having rendered the iframe. This shouldn't be a problem for us: When we call IsDarkModeActive(),
+    // there were already various REST requests before, so we should be fine. But just in case, we also give it a bit more time.
+    await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+    });
+	
+    const textColorString = window.getComputedStyle(document.body, null).getPropertyValue('color');
+    if (textColorString.indexOf('rgb') < 0) {
+        console.log('HistoryDiff: Failed to detect theme.');
+        return false;
+    }
+
+    // Based on https://stackoverflow.com/a/10971090/3740047
+    const colorComponents = textColorString.replace(/[^\d,]/g, '').split(',').map(Number);
+    if (colorComponents.length <= 2) {
+        console.log('HistoryDiff: Failed to detect theme.');
+        return false;
+    }
+
+    const textIsLight = colorComponents[0] > 127; // White text => dark mode enabled.
+    return textIsLight;
+}
+
+
+async function DetectAndApplyDarkMode()
+{
+    // We need to apply dark mode dynamically; see comment in IsDarkModeActive().
+    const darkMode = await IsDarkModeActive();
+    if (darkMode) {
+        document.head.insertAdjacentHTML(
+            'beforeend', 
+            `<style>
+                del { 
+                    background-color: rgb(149, 33, 0); 
+                }  
+                ins { 
+                    background-color: rgb(35, 94, 0); 
+                }
+            </style>`);
+    }
+}
+
+
+function CreateWorkItemPageEvents()
+{
+    // Compare https://github.com/microsoft/azure-devops-extension-sample/blob/6de8a97b53deff86d6863df0ac81561c14bf081b/src/Samples/WorkItemFormGroup/WorkItemFormGroup.tsx#L44
+    // for the argument type 'args' of each event.
+    return {
+        // Called every time the user changes the value of a field; saving is not required for this to be called. So there is no
+        // history changed yet. So nothing to do.
+        onFieldChanged: function (args) { },
+
+        // Called when the own page is shown (not the page of the work item, but when the user clicked on the tab to open the history diff).
+        // Also called when moving up or down a work item in a query of the time work item type; our history tab keeps getting shown in
+        // this case, and actually our whole 'instance' (iframe) is not recreated.
+        // args = IWorkItemLoadedArgs: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemloadedargs
+        onLoaded: function (args) {
+            // On the initial load we do nothing, because we already retrieved everything in InitializeHistoryDiff(). The advantage of doing
+            // it there is that we get the 'spinning circle' indicator for free by ADO.
+            if (gUnloadedCalled) {
+                // TODO: Would be more efficient to not load everything again if the user goes back to a previous work item in the query view.
+                LoadAndSetDiffInHTMLDocument();
+            }
+        },
+
+        // Called when moving up or down a work item in a query. The only thing we need to do is to
+        // let onLoaded know that it needs to actually get everything again.
+        onUnloaded: function (args) {
+            gUnloadedCalled = true;
+        },
+
+        // Called after the user saved the work item.
+        onSaved: function (args) {
+            // TODO: It would be more efficient to just get the latest update, not everything again.
+            LoadAndSetDiffInHTMLDocument();
+        },
+
+        // Not sure when this can be called in practice. So simply get everything again.
+        onReset: function (args) {
+            LoadAndSetDiffInHTMLDocument();
+        },
+
+        // Called when the user clicks on the ADO refresh button.
+        onRefreshed: function (args) {
+            LoadAndSetDiffInHTMLDocument();
+        }
+    };
+}
+
+
+// Called when the user opens the new 'History' tab (not called when simply opening a work item, i.e. called
+// lazily when actually required). Note that in queries the user can move up and down through the found items,
+// and there this function gets called only once for every new work item type (bug, user story, task, etc.)
+// encountered. For example, if there are two successive bugs, the user shows the history diff on the first bug,
+// then moves on to the next bug, ADO will show immediately our history diff tab, but this function is not called
+// again. Instead, the 'onUnloaded' and 'onLoaded' events are called (see CreateWorkItemPageEvents()).
+async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
+{
+    // Register the actual page shown by ADO.
+    // Based on https://learn.microsoft.com/en-us/azure/devops/extend/develop/add-workitem-extension?view=azure-devops-2019#htmljavascript-sample
+    // and https://learn.microsoft.com/en-us/azure/devops/extend/develop/add-workitem-extension?view=azure-devops-2019#add-a-page
+    // Register function: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-sdk/#functions
+    // Note: I couldn't get the adoSDK.ready() function to work; it was never called. Also, there are error messages if I do not call 
+    // the adoSDK.register() function before init(). Moreover, in principle adoSDK.getContributionId() could be used to get the first
+    // parameter for the register() function, but this does not work before init(). So I hardcoded the value.
+    adoSDK.register('Sedenion.HistoryDiff.historydiff', function () {
+            return CreateWorkItemPageEvents();
+        });
+
+    // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-sdk/#azure-devops-extension-sdk-init
+    // Options: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-sdk/iextensioninitoptions
+    // We set 'loaded' to false, so that ADO shows the "spinning loading indicator" while we get all work item updates.
+    adoSDK.init({applyTheme: true, loaded: false});
+
+    gAdoSDK = adoSDK;
+    gAdoAPI = adoAPI;
+    gHtmlDiff = htmldiff;
+    gWorkItemTracking = workItemTracking;
+    gFieldTypeEnum = workItemTracking.FieldType;
+    gWorkItemFormServiceId = workItemTracking.WorkItemTrackingServiceIds['WorkItemFormService'];
+    
+    // getClient(): https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/#azure-devops-extension-api-getclient
+    // Gives a WorkItemTrackingRestClient: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient
+    gWorkItemRESTClient = gAdoAPI.getClient(gWorkItemTracking.WorkItemTrackingRestClient);
+    
+    // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.
+    // This causes ADO to show the 'spinning loading indicator' until we are ready.
+    await LoadAndSetDiffInHTMLDocument();
+
+    // Needs to come after the previous call so that the UI had ample chances to update the UI at least once.
+    // Otherwise, our dark mode detection does not work. See comment in IsDarkModeActive().
+    await DetectAndApplyDarkMode();
+
+    adoSDK.notifyLoadSucceeded();
+}
+

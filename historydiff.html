@@ -1,0 +1,145 @@
+<!-- MIT License
+
+Copyright (c) 2024 Sedenion
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. 
+
+GitHub link: https://github.com/Sedeniono/ADO-History-Diff
+-->
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta charset="UTF-8">
+    <title>History</title>
+    <style>
+        del {
+            display: inline-block;
+            text-decoration: none;
+            position: relative;
+            padding : 1px 0.3em 1px;
+            /* Note: Will be changed dynamically if dark mode is detected; see comment in IsDarkModeActive(). */
+            background-color: #fbb;
+        }
+        ins {
+            display: inline-block;
+            text-decoration: none;
+            position: relative;
+            padding: 1px 0.3em 1px;
+            /* Note: Will be changed dynamically if dark mode is detected; see comment in IsDarkModeActive(). */
+            background-color: #d4fcbc;
+        }
+        table {
+            border-collapse: collapse;
+        }
+        td {
+            text-align: left;
+            vertical-align: top;
+            padding: 4px 15px 0 0;
+        }
+        th {            
+            text-align: left;
+            padding: 0 15px 0 0;
+        }
+        thead { 
+            border-bottom: 1px solid; 
+        }
+        .changeHeader {
+            /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
+            /* Except that these are undocumented. */
+            background-color: rgb(var(--palette-neutral-4, 244, 244, 244));
+            border-color: rgb(var(--palette-neutral-8, 234, 234, 234));
+            font-size: 1.2em; 
+            border-width: 2px; 
+            border-style: solid; 
+            display: inline-block; 
+            padding : 1px 0.3em 1px; 
+            margin-bottom: 3px;
+        }
+        .inlineAvatar {
+            display: inline-block;
+            height: 1em;
+            width: auto;
+            transform: translate(0, 0.1em);
+        }
+        a {
+            /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
+            color: var(--communication-foreground, rgb(0, 90, 158));
+        }
+    </style>
+</head>
+
+<body>
+    <script src="requirejs/require.js"></script>
+    <script src="HistoryDiffPageScript.js"></script>
+
+    <script>
+        // Based on https://learn.microsoft.com/en-us/azure/devops/extend/get-started/node?view=azure-devops-2019
+        window.requirejs.config({
+            enforceDefine: false,
+            paths: {
+                'azure-devops-extension-sdk': './lib/SDK.min'
+            },
+            packages: [
+                {
+                    name: 'azure-devops-extension-api',
+                    location: './api',
+                    main: 'index.min'
+                },
+                {
+                    name: 'whatwg-fetch',
+                    location: './whatwg-fetch/dist',
+                    main: 'fetch.umd'
+                },                
+                {
+                    name: 'Common/RestClientBase',
+                    location: './api/Common',
+                    main: 'RestClientBase.min'
+                },
+                {
+                    name: 'WITTrack',
+                    location: './api/WorkItemTracking',
+                    main: 'index.min'
+                },
+                {
+                    name: 'htmldiff',
+                    location: './htmldiff',
+                    main: 'htmldiff.js'
+                },                
+        ]
+        });
+
+        window.requirejs(['azure-devops-extension-sdk', 'azure-devops-extension-api', 'WITTrack', 'htmldiff'], function (adoSDK, adoAPI, workItemTracking, htmldiff) {
+            if (typeof adoSDK === 'undefined') {
+                console.log('HistoryDiff: Azure Devops SDK is not defined');
+                return;
+            }
+
+            InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff);
+        });
+    </script>
+
+    <!-- Will be overwritten by the script. -->
+    <div id="htmlDivDiff"></div>
+    
+    <p style="font-size: 0.7em; margin-top: 2em;">Generated by the ADO History Diff extension (<a href="https://github.com/Sedeniono/ADO-History-Diff">GitHub</a>).</p>
+</body>
+
+</html>
