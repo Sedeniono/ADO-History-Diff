@@ -129,9 +129,10 @@ function CreateHTMLFromRevisionUpdates(revisionUpdates, fieldsPropertiesMap)
             continue;
         }
 
-        s += '<hr><div>';
-        s += CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate);
-        s += '</div>';
+        const updateStr = CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate);
+        if (updateStr) {
+            s += `<hr><div>${updateStr}</div>`;
+        }
     }
 
     return s;
@@ -168,8 +169,6 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
     // then seems to contain the correct value.
     const rawChangedDate = revUpdate.fields?.['System.ChangedDate']?.newValue ?? revUpdate.revisedDate;
     const changedDate = rawChangedDate ? FormatDate(rawChangedDate) : 'an unknown date';
-
-    let s = `<div class="changeHeader">${idNumber}. ${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>:</div>`;
 
     let tableRows = [];
     if (revUpdate.fields) {
@@ -244,20 +243,20 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
         }
     }
 
-    if (tableRows) {
+    if (tableRows.length > 0) {
         tableRows.sort((a, b) => a[0].localeCompare(b[0]));
 
+        let s = `<div class="changeHeader">${idNumber}. ${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>:</div>`;
         tableRowsStr = '';
         for (const [friendlyName, diff] of tableRows) {
             tableRowsStr += `<tr><td>${friendlyName}</td><td>${diff}</td></tr>`
         }
         s += `<table><thead><tr><th>Field</th><th>Content</th></tr></thead><tbody>${tableRowsStr}</tbody></table>`;
+        return s;
     }
     else {
-        s += '<p>No changes that can be displayed.</p>';
+        return null;
     }
-
-    return s;
 }
 
 
