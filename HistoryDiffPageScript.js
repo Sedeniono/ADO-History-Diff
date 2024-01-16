@@ -64,6 +64,14 @@ function EscapeHtml(string) {
 }
 
 
+const gStyleRegex = /\<style\>.*?\<\/style\>/gms;
+
+function RemoveStyle(string) 
+{
+    return String(string).replace(gStyleRegex, '');
+}
+
+
 function GetHtmlDisplayField()
 {
     return document.getElementById('htmlDivDiff');
@@ -216,7 +224,7 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
             for (const relation of revUpdate.relations.added) {
                 const [friendlyName, change] = GetUserFriendlyStringsOfRelationChange(relation);
                 if (typeof friendlyName !== 'undefined') {
-                    tableRows.push([`Link added: ${friendlyName}`, `<ins>${change}</ins>`]);
+                    tableRows.push([`Link added: ${friendlyName}`, `<ins class="diffCls">${change}</ins>`]);
                 }
             }
         }
@@ -224,7 +232,7 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
             for (const relation of revUpdate.relations.removed) {
                 const [friendlyName, change] = GetUserFriendlyStringsOfRelationChange(relation);
                 if (typeof friendlyName !== 'undefined') {
-                    tableRows.push([`Link removed: ${friendlyName}`, `<del>${change}</del>`]);
+                    tableRows.push([`Link removed: ${friendlyName}`, `<del class="diffCls">${change}</del>`]);
                 }
             }                
         }
@@ -237,7 +245,7 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
             for (const relation of revUpdate.relations.updated) {
                 const [friendlyName, change] = GetUserFriendlyStringsOfRelationChange(relation);
                 if (typeof friendlyName !== 'undefined') {
-                    tableRows.push([`Link updated: ${friendlyName}`, `<ins>${change}</ins>`]);
+                    tableRows.push([`Link updated: ${friendlyName}`, `<ins class="diffCls">${change}</ins>`]);
                 }
             }
         }
@@ -249,9 +257,10 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
         let s = `<div class="changeHeader">${idNumber}. ${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>:</div>`;
         tableRowsStr = '';
         for (const [friendlyName, diff] of tableRows) {
-            tableRowsStr += `<tr><td>${friendlyName}</td><td>${diff}</td></tr>`
+            tableRowsStr += `<tr><td class="diffCls">${friendlyName}</td><td class="diffCls">${diff}</td></tr>`
         }
-        s += `<table><thead><tr><th>Field</th><th>Content</th></tr></thead><tbody>${tableRowsStr}</tbody></table>`;
+        s += `<table class="diffCls"><thead class="diffCls"><tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr></thead>
+            <tbody>${tableRowsStr}</tbody></table>`;
         return s;
     }
     else {
@@ -364,7 +373,14 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         {
             const oldValue = value.oldValue ?? '';
             const newValue = value.newValue ?? '';
-            return gHtmlDiff(oldValue, newValue);
+            // Remove <style> in the html content: Having it in the <body> is illegal. ADO itself doesn't insert them
+            // (as far as I know), but some tools (e.g. JIRA to ADO conversion scripts) might insert them. Also, you can
+            // edit e.g. the description field in the browser's debugger and insert any html there, and ADO apparently
+            // stores it in its database. Thus, we end up getting <style> here, too. ADO itself actually also removes the 
+            // <style> tag when loading a work item in the UI.
+            const oldValueFixed = RemoveStyle(oldValue);
+            const newValueFixed = RemoveStyle(newValue);
+            return gHtmlDiff(oldValueFixed, newValueFixed, 'diffCls');
         }
             
         // 'History' means the comments. Unfortunately, they are quite special: When a user adds a new comment, it shows
@@ -372,10 +388,11 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         // computing a diff makes no sense. If a user edits a comment, it does generate a work item update element, but
         // without any usable information (especially no 'System.History' entry). Instead, the **original** update which
         // added the comment suddenly has changed and displays the new edited value.
+        // The value itself is html.
         // TODO: Support the history of comments properly. We need to use a dedicated REST API for this:
         // https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments-versions/get
         case gFieldTypeEnum.History:
-            return value.hasOwnProperty('newValue') ? `<ins>${value.newValue}</ins>` : '';
+            return value.hasOwnProperty('newValue') ? `<ins class="diffCls">${RemoveStyle(value.newValue)}</ins>` : '';
 
         case gFieldTypeEnum.String:
         case gFieldTypeEnum.PlainText:
@@ -385,7 +402,7 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
             // We simply feed htmldiff the values with escaped special characters, meaning that htmldiff should not see any HTML elements.
             // Using a different diff-library (jsdiff or diff-match-patch) is not worth the additional dependency, since the only work item
             // fields that contain a significant amount of text are html elements. (Plain text or string fields do not support multiple lines.)
-            return gHtmlDiff(EscapeHtml(oldValue), EscapeHtml(newValue));
+            return gHtmlDiff(EscapeHtml(oldValue), EscapeHtml(newValue), 'diffCls');
         }
 
         case gFieldTypeEnum.Integer:
@@ -396,16 +413,16 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         case gFieldTypeEnum.Guid: // Guids are given as plain strings.
         case gFieldTypeEnum.Boolean:
         case gFieldTypeEnum.TreePath:
-            return (value.hasOwnProperty('oldValue') ? `<del>${EscapeHtml(value.oldValue)}</del>` : '') 
-                + (value.hasOwnProperty('newValue') ? `<ins>${EscapeHtml(value.newValue)}</ins>` : '');
+            return (value.hasOwnProperty('oldValue') ? `<del class="diffCls">${EscapeHtml(value.oldValue)}</del>` : '') 
+                + (value.hasOwnProperty('newValue') ? `<ins class="diffCls">${EscapeHtml(value.newValue)}</ins>` : '');
 
         case gFieldTypeEnum.DateTime:
-            return (value.hasOwnProperty('oldValue') ? `<del>${FormatDate(value.oldValue)}</del>` : '') 
-                + (value.hasOwnProperty('newValue') ? `<ins>${FormatDate(value.newValue)}</ins>` : '');
+            return (value.hasOwnProperty('oldValue') ? `<del class="diffCls">${FormatDate(value.oldValue)}</del>` : '') 
+                + (value.hasOwnProperty('newValue') ? `<ins class="diffCls">${FormatDate(value.newValue)}</ins>` : '');
 
         case gFieldTypeEnum.Identity:
-            return (value.hasOwnProperty('oldValue') ? `<del>${FormatIdentityForFieldDiff(value.oldValue)}</del>` : '') 
-                + (value.hasOwnProperty('newValue') ? `<ins>${FormatIdentityForFieldDiff(value.newValue)}</ins>` : '');
+            return (value.hasOwnProperty('oldValue') ? `<del class="diffCls">${FormatIdentityForFieldDiff(value.oldValue)}</del>` : '') 
+                + (value.hasOwnProperty('newValue') ? `<ins class="diffCls">${FormatIdentityForFieldDiff(value.newValue)}</ins>` : '');
 
         default:
             console.log(`HistoryDiff: Unknown field type '${fieldType}' (${gFieldTypeEnum?.[fieldType]}), oldValueType: ${typeof value.oldValue}, newValueType: ${typeof value.newValue}`);
@@ -576,10 +593,10 @@ async function DetectAndApplyDarkMode()
         document.head.insertAdjacentHTML(
             'beforeend', 
             `<style>
-                del { 
+                del.diffCls { 
                     background-color: rgb(149, 33, 0); 
                 }  
-                ins { 
+                ins.diffCls { 
                     background-color: rgb(35, 94, 0); 
                 }
             </style>`);

@@ -30,7 +30,7 @@ GitHub link: https://github.com/Sedeniono/ADO-History-Diff
     <meta charset="UTF-8">
     <title>History</title>
     <style>
-        del {
+        del.diffCls {
             display: inline-block;
             text-decoration: none;
             position: relative;
@@ -38,7 +38,7 @@ GitHub link: https://github.com/Sedeniono/ADO-History-Diff
             /* Note: Will be changed dynamically if dark mode is detected; see comment in IsDarkModeActive(). */
             background-color: #fbb;
         }
-        ins {
+        ins.diffCls {
             display: inline-block;
             text-decoration: none;
             position: relative;
@@ -46,22 +46,22 @@ GitHub link: https://github.com/Sedeniono/ADO-History-Diff
             /* Note: Will be changed dynamically if dark mode is detected; see comment in IsDarkModeActive(). */
             background-color: #d4fcbc;
         }
-        table {
+        table.diffCls {
             border-collapse: collapse;
         }
-        td {
+        td.diffCls {
             text-align: left;
             vertical-align: top;
             padding: 4px 15px 0 0;
         }
-        th {            
+        th.diffCls {            
             text-align: left;
             padding: 0 15px 0 0;
         }
-        thead { 
+        thead.diffCls { 
             border-bottom: 1px solid; 
         }
-        .changeHeader {
+        div.changeHeader {
             /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
             /* Except that these are undocumented. */
             background-color: rgb(var(--palette-neutral-4, 244, 244, 244));
