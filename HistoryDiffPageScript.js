@@ -187,8 +187,14 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
             // No idea what these additional fields are for, but it seems that they are duplicates of other fields?
             // For the above 'Kanban' example, there is also 'System.BoardColumn' with apparently the same information?
             // For simplicity, we won't display them (because what should we display as 'friendly' field name?).
-            if (!fieldsPropertiesMap.hasOwnProperty(fieldReferenceName)) {
-                console.log(`HistoryDiff: Revision ${revUpdate.rev} (change date: ${changedDate}) contains unknown field '${fieldReferenceName}'. Not showing its changes.`);
+            // Also, such 'WEF_' fields actually randomly appear anyway in the map of known types every know and then, but after 
+            // a refresh they are gone. So filter them always.
+            const isWEF = fieldReferenceName.lastIndexOf('WEF_', 0) === 0;
+            if (isWEF) {
+                continue;
+            }
+            else if (!fieldsPropertiesMap.hasOwnProperty(fieldReferenceName)) {
+                console.log(`HistoryDiff: Update with id ${idNumber} (change date: ${changedDate}) contains unknown field '${fieldReferenceName}'. Not showing its changes.`);
                 continue;
             }
         
