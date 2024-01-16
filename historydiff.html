@@ -61,9 +61,12 @@ GitHub link: https://github.com/Sedeniono/ADO-History-Diff
         thead.diffCls { 
             border-bottom: 1px solid; 
         }
+        tbody tr.diffCls:nth-child(even) {
+            /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
+            background-color: rgb(var(--palette-neutral-4, 244, 244, 244));
+        }
         div.changeHeader {
             /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
-            /* Except that these are undocumented. */
             background-color: rgb(var(--palette-neutral-4, 244, 244, 244));
             border-color: rgb(var(--palette-neutral-8, 234, 234, 234));
             font-size: 1.2em; 

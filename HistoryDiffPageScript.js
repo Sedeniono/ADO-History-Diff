@@ -257,7 +257,7 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
         let s = `<div class="changeHeader">${idNumber}. ${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>:</div>`;
         tableRowsStr = '';
         for (const [friendlyName, diff] of tableRows) {
-            tableRowsStr += `<tr><td class="diffCls">${friendlyName}</td><td class="diffCls">${diff}</td></tr>`
+            tableRowsStr += `<tr class="diffCls"><td class="diffCls">${friendlyName}</td><td class="diffCls">${diff}</td></tr>`
         }
         s += `<table class="diffCls"><thead class="diffCls"><tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr></thead>
             <tbody>${tableRowsStr}</tbody></table>`;
