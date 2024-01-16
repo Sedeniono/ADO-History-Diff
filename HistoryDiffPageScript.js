@@ -362,12 +362,21 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
 
     switch (fieldType) {
         case gFieldTypeEnum.Html:
-        case gFieldTypeEnum.History: // 'History' means the comments.
         {
             const oldValue = value.oldValue ?? '';
             const newValue = value.newValue ?? '';
             return gHtmlDiff(oldValue, newValue);
         }
+            
+        // 'History' means the comments. Unfortunately, they are quite special: When a user adds a new comment, it shows
+        // up in the work item updates in the 'newValue'. The 'oldValue' contains the value of the previous comment. So
+        // computing a diff makes no sense. If a user edits a comment, it does generate a work item update element, but
+        // without any usable information (especially no 'System.History' entry). Instead, the **original** update which
+        // added the comment suddenly has changed and displays the new edited value.
+        // TODO: Support the history of comments properly. We need to use a dedicated REST API for this:
+        // https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments-versions/get
+        case gFieldTypeEnum.History:
+            return value.hasOwnProperty('newValue') ? `<ins>${value.newValue}</ins>` : '';
 
         case gFieldTypeEnum.String:
         case gFieldTypeEnum.PlainText:
@@ -410,7 +419,7 @@ function GetFriendlyFieldName(fieldsPropertiesMap, fieldReferenceName)
 {
     // The 'System.History' field represents the comments, but is named 'history' (probably for historic reasons).
     if (fieldReferenceName === 'System.History') {
-        return 'Comments';
+        return 'Comment';
     }
 
     return fieldsPropertiesMap?.[fieldReferenceName].name;
