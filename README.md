@@ -18,20 +18,24 @@ Changes to the text are much clearer.
 
 
 # Installation
+Install the extension from the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff).
+Please see the official extension installation description for [Azure DevOps Services](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops) and [Azure DevOps Server](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022) for details.
+
+
 Requirements:
 * Azure DevOps:
   * On Premise: [Azure DevOps Server](https://azure.microsoft.com/en-us/products/devops/server) 2019, 2020 or 2022. (Tested with 2019.1.2, 2020.1.2 and 2022.1.)
   * Also supports the cloud variation [Azure DevOps Services](https://azure.microsoft.com/en-us/products/devops)
 * Users should use a reasonably recent browser (year >2020). Tested with Edge, Chrome and Firefox.
 
-Install the extension from the Microsoft marketplace.
-Please see the official description for [Azure DevOps Services](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops) and [Azure DevOps Server](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022).
 
 If you want to inspect the contents/source code of the vsix package, it can be extracted using tools such as [7-zip](https://www.7-zip.org/).
 If you want to build the vsix package yourself (also compare the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/extend/get-started/node)):
-* Download the source code.
-* `npm install` to get the dependencies.
-* `npx tfx-cli extension create` to create the vsix package.
+* Get the source code from the [extension's GitHub repository](https://github.com/Sedeniono/ADO-History-Diff).
+* Execute `npm install -g tfx-cli` somewhere to install the extension packaging tool (TFX) globally.
+* In the code's main directory, execute:
+  * `npm ci` to get the dependencies.
+  * `npx tfx-cli extension create` to create the vsix package.
 
 
 
