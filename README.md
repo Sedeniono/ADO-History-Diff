@@ -10,7 +10,7 @@
 # Introduction
 The history tab of work items in Azure DevOps (ADO) shows only the old and new values of each field, without highlighting the actual changes within the field.
 This makes spotting the difference very hard for fields that usually contain a lot of text; most prominently, the standard "Description" field.
-This extension shows the full history of the work item of every field, while computing an appropriate diff for each one.
+This extension adds a new tab to work items that shows the full history of every field, while computing an appropriate diff for each one.
 
 The left image shows the default ADO history, while the right depicts the history as shown by the extension:
 Changes to the text are much clearer.
@@ -18,13 +18,16 @@ Changes to the text are much clearer.
 
 
 # Installation
-Install the extension from the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff).
-Please see the official extension installation description for [Azure DevOps Services](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops) and [Azure DevOps Server](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022) for details.
+To install:
+* Via the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff).
+* If you are using the on-premise Azure DevOps Server, you can also download the extension's vsix package from the [releases here on GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases) and install it directly without using the marketplace.
+
+Please see Microsoft's official installation instruction for extensions for [Azure DevOps Services](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops) and [Azure DevOps Server](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022).
 
 
 Requirements:
 * Azure DevOps:
-  * On Premise: [Azure DevOps Server](https://azure.microsoft.com/en-us/products/devops/server) 2019, 2020 or 2022. (Tested with 2019.1.2, 2020.1.2 and 2022.1.)
+  * On-premise: [Azure DevOps Server](https://azure.microsoft.com/en-us/products/devops/server) 2019, 2020 or 2022. (Tested with 2019.1.2, 2020.1.2 and 2022.1.)
   * Also supports the cloud variation [Azure DevOps Services](https://azure.microsoft.com/en-us/products/devops)
 * Users should use a reasonably recent browser (year >2020). Tested with Edge, Chrome and Firefox.
 
