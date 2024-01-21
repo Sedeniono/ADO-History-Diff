@@ -538,6 +538,8 @@ function CreateHTMLFromComments(comments)
 }
 
 
+// Returns an array 'Comment[]', as described here: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments/get-comments?view=azure-devops-rest-5.1
+// However, every 'Comment' element contains an additional property 'allUpdates' that is an array of all versions of the comment.
 async function GetCommentsWithHistory(workItemId, projectName)
 {
     const allComments = await gWorkItemRESTClient.getComments_Patched(
@@ -547,13 +549,26 @@ async function GetCommentsWithHistory(workItemId, projectName)
         return null;
     }
 
+    let commentsAwaiting = [];
+    let versionsPromises = [];
+
     for (const comment of allComments.comments) {
+        // If there is more than one version, start the request for all versions of the comment. We will await the
+        // answer for all comments simultaneously below.
         if (comment?.version > 1 && comment?.id) {
-            const commentUpdates = await gWorkItemRESTClient.getCommentsVersions_Patched(workItemId, projectName, comment.id);
-            comment.allUpdates = commentUpdates;
+            const versionsPromise = gWorkItemRESTClient.getCommentsVersions_Patched(workItemId, projectName, comment.id);
+            commentsAwaiting.push(comment);
+            versionsPromises.push(versionsPromise);
         }
         else {
             comment.allUpdates = [comment];
+        }
+    }
+
+    if (commentsAwaiting.length > 0) {
+        const allVersions = await Promise.all(versionsPromises);
+        for (let idx = 0; idx < commentsAwaiting.length; ++idx) {
+            commentsAwaiting[idx].allUpdates = allVersions[idx];
         }
     }
 
@@ -587,6 +602,16 @@ async function GetMapOfFieldProperties(workItemFormService)
 }
 
 
+async function GetProjectName()
+{
+    // projectService = IProjectPageService: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectpageservice
+    const projectService = await gAdoSDK.getService(gAdoAPI.CommonServiceIds['ProjectPageService']);
+    // project = IProjectInfo: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectinfo
+    const project = await projectService.getProject();
+    return project.name;
+}
+
+
 async function LoadAndSetDiffInHTMLDocument()
 {
     SetHtmlToLoading();
@@ -595,20 +620,21 @@ async function LoadAndSetDiffInHTMLDocument()
     // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemformservice
     // Note stored as global variable during initialization because the instance is tied to a certain work item,
     // and when the 'onLoaded' event is called, we might have switched to another work item. So need to get it again.
-    const workItemFormService = await gAdoSDK.getService(gWorkItemFormServiceId);
-
-    const workItemId = await workItemFormService.getId();    
-    const fieldsPropertiesMap = await GetMapOfFieldProperties(workItemFormService);
-
-    // projectService = IProjectPageService: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectpageservice
-    const projectService = await gAdoSDK.getService(gAdoAPI.CommonServiceIds['ProjectPageService']);
-    // project = IProjectInfo: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectinfo
-    const project = await projectService.getProject();
-    const projectName = project.name;
-
-    const revisionUpdates = await GetAllRevisionUpdates(workItemId, projectName);
-    const comments = await GetCommentsWithHistory(workItemId, projectName);
+    const [workItemFormService, projectName] = await Promise.all([
+        gAdoSDK.getService(gWorkItemFormServiceId), 
+        GetProjectName()
+    ]);
     
+    const [workItemId, fieldsPropertiesMap] = await Promise.all([
+        workItemFormService.getId(),
+        GetMapOfFieldProperties(workItemFormService)
+    ]);
+
+    const [revisionUpdates, comments] = await Promise.all([
+        GetAllRevisionUpdates(workItemId, projectName),
+        GetCommentsWithHistory(workItemId, projectName)
+    ]);
+
     // TODO: Proper sorting by date
     // TODO: Maybe merge the work item updates with the comment updates where possible?
     // TODO: Remove System.History printing.
