@@ -168,15 +168,11 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
     // incremented also when a relation is changed.
     const idNumber = EscapeHtml(revUpdate.id);
 
-    const changedByName = GetIdentityName(revUpdate.revisedBy);
-    const avatarHtml = GetIdentityAvatarHtml(revUpdate.revisedBy);
-
     // For some reason, 'revUpdate.revisedDate' contains the year 9999 for the newest revision, so we use the 'System.ChangedDate' field.
     // I have also seen intermediate revisions having this problem.
     // Exception: If only a relation is changed but not a field, then 'System.ChangedDate' does not exist. But 'revUpdate.revisedDate' 
     // then seems to contain the correct value.
     const rawChangedDate = revUpdate.fields?.['System.ChangedDate']?.newValue ?? revUpdate.revisedDate;
-    const changedDate = rawChangedDate ? FormatDate(rawChangedDate) : 'an unknown date';
 
     let tableRows = [];
     if (revUpdate.fields) {
@@ -201,7 +197,7 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
                 continue;
             }
             else if (!fieldsPropertiesMap.hasOwnProperty(fieldReferenceName)) {
-                console.log(`HistoryDiff: Update with id ${idNumber} (change date: ${changedDate}) contains unknown field '${fieldReferenceName}'. Not showing its changes.`);
+                console.log(`HistoryDiff: Update with id ${idNumber} (change date: ${rawChangedDate}) contains unknown field '${fieldReferenceName}'. Not showing its changes.`);
                 continue;
             }
         
@@ -252,20 +248,30 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
     }
 
     if (tableRows.length > 0) {
-        tableRows.sort((a, b) => a[0].localeCompare(b[0]));
-
-        let s = `<div class="changeHeader">${idNumber}. ${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>:</div>`;
-        tableRowsStr = '';
-        for (const [friendlyName, diff] of tableRows) {
-            tableRowsStr += `<tr class="diffCls"><td class="diffCls">${friendlyName}</td><td class="diffCls">${diff}</td></tr>`
-        }
-        s += `<table class="diffCls"><thead class="diffCls"><tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr></thead>
-            <tbody>${tableRowsStr}</tbody></table>`;
-        return s;
+        return CreateHTMLForChangesOnDate(idNumber, revUpdate.revisedBy, rawChangedDate, tableRows);
     }
     else {
         return null;
     }
+}
+
+
+function CreateHTMLForChangesOnDate(changeId, changedByIdentity, rawChangedDate, tableRows)
+{
+    tableRows.sort((a, b) => a[0].localeCompare(b[0]));
+
+    const changedByName = GetIdentityName(changedByIdentity);
+    const avatarHtml = GetIdentityAvatarHtml(changedByIdentity);
+    const changedDate = rawChangedDate ? FormatDate(rawChangedDate) : 'an unknown date';
+
+    let s = `<div class="changeHeader">${changeId}. ${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>:</div>`;
+    let tableRowsStr = '';
+    for (const [friendlyName, diff] of tableRows) {
+        tableRowsStr += `<tr class="diffCls"><td class="diffCls">${friendlyName}</td><td class="diffCls">${diff}</td></tr>`
+    }
+    s += `<table class="diffCls"><thead class="diffCls"><tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr></thead>
+        <tbody>${tableRowsStr}</tbody></table>`;
+    return s;
 }
 
 
@@ -340,6 +346,19 @@ function GetUserFriendlyStringsOfRelationChange(relation)
 }
 
 
+function DiffHtmlText(oldValue, newValue) 
+{
+    // Remove <style> in the html content: Having it in the <body> is illegal. ADO itself doesn't insert them
+    // (as far as I know), but some tools (e.g. JIRA to ADO conversion scripts) might insert them. Also, you can
+    // edit e.g. the description field in the browser's debugger and insert any html there, and ADO apparently
+    // stores it in its database. Thus, we end up getting <style> here, too. ADO itself actually also removes the 
+    // <style> tag when loading a work item in the UI.
+    const oldValueFixed = RemoveStyle(oldValue ?? '');
+    const newValueFixed = RemoveStyle(newValue ?? '');
+    return gHtmlDiff(oldValueFixed, newValueFixed, 'diffCls'); 
+}
+
+
 function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
 {
     if (typeof value?.oldValue === 'undefined' && typeof value?.newValue === 'undefined') {
@@ -370,18 +389,7 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
 
     switch (fieldType) {
         case gFieldTypeEnum.Html:
-        {
-            const oldValue = value.oldValue ?? '';
-            const newValue = value.newValue ?? '';
-            // Remove <style> in the html content: Having it in the <body> is illegal. ADO itself doesn't insert them
-            // (as far as I know), but some tools (e.g. JIRA to ADO conversion scripts) might insert them. Also, you can
-            // edit e.g. the description field in the browser's debugger and insert any html there, and ADO apparently
-            // stores it in its database. Thus, we end up getting <style> here, too. ADO itself actually also removes the 
-            // <style> tag when loading a work item in the UI.
-            const oldValueFixed = RemoveStyle(oldValue);
-            const newValueFixed = RemoveStyle(newValue);
-            return gHtmlDiff(oldValueFixed, newValueFixed, 'diffCls');
-        }
+            return DiffHtmlText(value.oldValue, value.newValue);
             
         // 'History' means the comments. Unfortunately, they are quite special: When a user adds a new comment, it shows
         // up in the work item updates in the 'newValue'. The 'oldValue' contains the value of the previous comment. So
@@ -444,14 +452,8 @@ function GetFriendlyFieldName(fieldsPropertiesMap, fieldReferenceName)
 
 // Returns a promise for an array of 'WorkItemUpdate': https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemupdate
 // Each 'WorkItemUpdate' element contains information about the difference to the previous revision.
-async function GetAllRevisionUpdates(workItemId)
+async function GetAllRevisionUpdates(workItemId, projectName)
 {
-    // projectService = IProjectPageService: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectpageservice
-    const projectService = await gAdoSDK.getService(gAdoAPI.CommonServiceIds['ProjectPageService']);
-
-    // project = IProjectInfo: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectinfo
-    const project = await projectService.getProject();
-
     // getRevisions(): https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient#azure-devops-extension-api-workitemtrackingrestclient-getrevisions
     //   3rd parameter 'top': How many work items to get from the beginning. E.g. top=5 gets the 5 earliest revisions.
     //   4th parameter 'skip': How many work items to skip at the beginning. E.g. skip=5 skips the earliest 5 revisions.
@@ -464,7 +466,7 @@ async function GetAllRevisionUpdates(workItemId)
     //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/2/revisions?%24skip=3
     //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/3/revisions?%24expand=1
     //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/3/revisions?%24top=3&%24skip=4
-    //return gWorkItemRESTClient.getRevisions(workItemId, project.name);
+    //return gWorkItemRESTClient.getRevisions(workItemId, projectName);
 
     // getUpdates(): https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient#azure-devops-extension-api-workitemtrackingrestclient-getupdates
     // Examples of a resulting REST query:
@@ -478,7 +480,7 @@ async function GetAllRevisionUpdates(workItemId)
     let all = [];
     while (true) {
         const skip = all.length;
-        const curBatch = await gWorkItemRESTClient.getUpdates(workItemId, project.name, undefined, skip);
+        const curBatch = await gWorkItemRESTClient.getUpdates(workItemId, projectName, undefined, skip);
         if (!curBatch || !curBatch.hasOwnProperty('length') || curBatch.length == 0) {
             break;
         }
@@ -486,15 +488,12 @@ async function GetAllRevisionUpdates(workItemId)
         all.push.apply(all, curBatch);
     }
     
+    return all;
+}
 
 
-    // http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/2/comments
-    const testComments = await gWorkItemRESTClient.getComments_Patched(workItemId, project.name, 'none', undefined, true);
-    console.log("testComments:" + testComments);
-
-    const testCommentHistory = await gWorkItemRESTClient.getCommentsVersions_Patched(workItemId, project.name, /*REPLACE WITH COMMENT ID*/ 1);
-    console.log("test hist:" + testCommentHistory);
-
+function CreateHTMLFromComments(comments)
+{
     // TODO:
     // - Get comments
     //   https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments/get-comments?view=azure-devops-rest-5.1&tabs=HTTP
@@ -506,9 +505,61 @@ async function GetAllRevisionUpdates(workItemId)
     // - Test with more than 200 edits.
     // - Link comments seem to be different again?
 
+    let s = '';
 
-    return all;
+    for (const comment of comments) {
+        if (!comment || !comment.allUpdates) {
+            continue;
+        }
+
+        // Sort from newest to oldest.
+        comment.allUpdates.sort((a, b) => b.version - a.version);
+
+        for (let idx = 0; idx < comment.allUpdates.length; ++idx) {
+            const curVersion = comment.allUpdates[idx];
+            const prevVersion = idx < comment.allUpdates.length ? comment.allUpdates[idx + 1] : null;
+
+            const curText = curVersion?.isDeleted ? '' : curVersion?.text;
+            const prevText = prevVersion?.isDeleted ? '' : prevVersion?.text;
+            const textChange = DiffHtmlText(prevText, curText);
+            // TODO
+            const tableRows = [[`Comment TEST ${comment.id}`, textChange]];
+
+            const changeId = 0; // TODO Something meaningful
+            const updateStr = CreateHTMLForChangesOnDate(changeId, curVersion.modifiedBy, curVersion.modifiedDate, tableRows);
+
+            if (updateStr) {
+                s += `<hr><div>${updateStr}</div>`;
+            }
+        }
+    }
+
+    return s;
 }
+
+
+async function GetCommentsWithHistory(workItemId, projectName)
+{
+    const allComments = await gWorkItemRESTClient.getComments_Patched(
+        workItemId, projectName, /*expand*/ 'none', undefined, /*includeDeleted*/ true);
+    
+    if (!allComments || !allComments.comments || allComments.comments.length == 0) {
+        return null;
+    }
+
+    for (const comment of allComments.comments) {
+        if (comment?.version > 1 && comment?.id) {
+            const commentUpdates = await gWorkItemRESTClient.getCommentsVersions_Patched(workItemId, projectName, comment.id);
+            comment.allUpdates = commentUpdates;
+        }
+        else {
+            comment.allUpdates = [comment];
+        }
+    }
+
+    return allComments.comments;
+}
+
 
 
 // Returns an object, where the property name is the work-item-field-type's referenceName such as 'System.Description', and the value is
@@ -549,8 +600,20 @@ async function LoadAndSetDiffInHTMLDocument()
     const workItemId = await workItemFormService.getId();    
     const fieldsPropertiesMap = await GetMapOfFieldProperties(workItemFormService);
 
-    const revisionUpdates = await GetAllRevisionUpdates(workItemId);
-    const htmlString = CreateHTMLFromRevisionUpdates(revisionUpdates, fieldsPropertiesMap);
+    // projectService = IProjectPageService: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectpageservice
+    const projectService = await gAdoSDK.getService(gAdoAPI.CommonServiceIds['ProjectPageService']);
+    // project = IProjectInfo: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectinfo
+    const project = await projectService.getProject();
+    const projectName = project.name;
+
+    const revisionUpdates = await GetAllRevisionUpdates(workItemId, projectName);
+    const comments = await GetCommentsWithHistory(workItemId, projectName);
+    
+    // TODO: Proper sorting by date
+    // TODO: Maybe merge the work item updates with the comment updates where possible?
+    // TODO: Remove System.History printing.
+    let htmlString = CreateHTMLFromRevisionUpdates(revisionUpdates, fieldsPropertiesMap);
+    htmlString = CreateHTMLFromComments(comments) + htmlString;
 
     GetHtmlDisplayField().innerHTML = htmlString;
 }
