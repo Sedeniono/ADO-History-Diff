@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "HistoryDiff",
     "publisher": "Sedenion",
-    "version": "1.0.0.0",
+    "version": "1.0.0.17",
     "name": "History Diff",
     "description": "Azure DevOps extension to show the history of work item fields with proper diffs.",
     "public": true,
@@ -47,7 +47,7 @@
         }
     ],
     "demands": [
-        "api-version/5.0"
+        "api-version/5.1"
     ],
     "contributions": [
         {  
