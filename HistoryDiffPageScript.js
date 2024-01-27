@@ -24,6 +24,8 @@ SOFTWARE.
 GitHub link: https://github.com/Sedeniono/ADO-History-Diff
 */
 
+// @ts-check
+
 var gAdoSDK;
 var gAdoAPI;
 var gHtmlDiff;
