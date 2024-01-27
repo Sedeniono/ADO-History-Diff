@@ -126,9 +126,9 @@ function FormatIdentityForFieldDiff(identity)
 }
 
 
-function CreateHTMLFromRevisionUpdates(revisionUpdates, fieldsPropertiesMap) 
+function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap) 
 {
-    let s = '';
+    let allUpdateTables = [];
 
     for (let revIdx = revisionUpdates.length - 1; revIdx >= 0; --revIdx) {
         // revUpdate = WorkItemUpdate: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemupdate
@@ -137,13 +137,13 @@ function CreateHTMLFromRevisionUpdates(revisionUpdates, fieldsPropertiesMap)
             continue;
         }
 
-        const updateStr = CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate);
-        if (updateStr) {
-            s += `<hr><div>${updateStr}</div>`;
+        const tableInfosOfUpdate = GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate);
+        if (tableInfosOfUpdate) {
+            allUpdateTables.push(tableInfosOfUpdate);
         }
     }
 
-    return s;
+    return allUpdateTables;
 }
 
 
@@ -155,14 +155,17 @@ const hiddenFields = [
     // Fields that are sufficiently represented by the 'System.IterationPath' field.
     'System.IterationId',
     // The work item ID is pretty clear to the user, no need to show it.
-    'System.Id', 
+    'System.Id',
+    // These are the comments on work items, but the updates reported by ADO to the field are unusable.
+    // We get the history of comments separately. So filter out the 'System.History' field itself.
+    'System.History',
     // Further things that seem unnecessary.
     'Microsoft.VSTS.Common.StateChangeDate', 'System.IsDeleted', 'System.CommentCount', 'System.PersonId', 'System.AuthorizedAs',
     'System.ChangedBy', 'System.CreatedBy'
 ];
 
 
-function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
+function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
 {
     // The work item revision 'revUpdate.rev' seems to get incremented only when a field changes. The 'id' gets 
     // incremented also when a relation is changed.
@@ -247,31 +250,12 @@ function CreateHTMLFromSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
         }
     }
 
-    if (tableRows.length > 0) {
-        return CreateHTMLForChangesOnDate(idNumber, revUpdate.revisedBy, rawChangedDate, tableRows);
-    }
-    else {
-        return null;
-    }
-}
-
-
-function CreateHTMLForChangesOnDate(changeId, changedByIdentity, rawChangedDate, tableRows)
-{
-    tableRows.sort((a, b) => a[0].localeCompare(b[0]));
-
-    const changedByName = GetIdentityName(changedByIdentity);
-    const avatarHtml = GetIdentityAvatarHtml(changedByIdentity);
-    const changedDate = rawChangedDate ? FormatDate(rawChangedDate) : 'an unknown date';
-
-    let s = `<div class="changeHeader">${changeId}. ${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>:</div>`;
-    let tableRowsStr = '';
-    for (const [friendlyName, diff] of tableRows) {
-        tableRowsStr += `<tr class="diffCls"><td class="diffCls">${friendlyName}</td><td class="diffCls">${diff}</td></tr>`
-    }
-    s += `<table class="diffCls"><thead class="diffCls"><tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr></thead>
-        <tbody>${tableRowsStr}</tbody></table>`;
-    return s;
+    return {
+        authorIdentity: revUpdate.revisedBy,
+        changedDate: rawChangedDate,
+        tableRows: tableRows,
+        idNumber: idNumber
+    };
 }
 
 
@@ -392,13 +376,13 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
             return DiffHtmlText(value.oldValue, value.newValue);
             
         // 'History' means the comments. Unfortunately, they are quite special: When a user adds a new comment, it shows
-        // up in the work item updates in the 'newValue'. The 'oldValue' contains the value of the previous comment. So
-        // computing a diff makes no sense. If a user edits a comment, it does generate a work item update element, but
-        // without any usable information (especially no 'System.History' entry). Instead, the **original** update which
-        // added the comment suddenly has changed and displays the new edited value.
-        // The value itself is html.
-        // TODO: Support the history of comments properly. We need to use a dedicated REST API for this:
-        // https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments-versions/get
+        // up in the work item updates in the 'newValue'. The value itself is html. The 'oldValue' contains the value of 
+        // the previously added comment. So computing a diff makes no sense. If a user edits a comment, it does generate 
+        // a work item update element, but without any usable information (especially no 'System.History' entry). Instead, 
+        // the **original** update which added the comment suddenly has changed and displays the new edited value.
+        // => We actually filter out the 'System.History' entry somewhere else. I think that apart from 'System.History',
+        // no other field can use the 'History' field type. Hence, this code here is probably dead. We have dedicated REST
+        // API requests somewhere else to get the history of comments.
         case gFieldTypeEnum.History:
             return value.hasOwnProperty('newValue') ? `<ins class="diffCls">${RemoveStyle(value.newValue)}</ins>` : '';
 
@@ -492,7 +476,7 @@ async function GetAllRevisionUpdates(workItemId, projectName)
 }
 
 
-function CreateHTMLFromComments(comments)
+function GetTableInfosForEachComment(comments)
 {
     // TODO:
     // - Get comments
@@ -505,7 +489,7 @@ function CreateHTMLFromComments(comments)
     // - Test with more than 200 edits.
     // - Link comments seem to be different again?
 
-    let s = '';
+    let allTables = [];
 
     for (const comment of comments) {
         if (!comment || !comment.allUpdates) {
@@ -513,6 +497,7 @@ function CreateHTMLFromComments(comments)
         }
 
         // Sort from newest to oldest.
+        // TODO: This should be unnecessary now.
         comment.allUpdates.sort((a, b) => b.version - a.version);
 
         for (let idx = 0; idx < comment.allUpdates.length; ++idx) {
@@ -522,19 +507,31 @@ function CreateHTMLFromComments(comments)
             const curText = curVersion?.isDeleted ? '' : curVersion?.text;
             const prevText = prevVersion?.isDeleted ? '' : prevVersion?.text;
             const textChange = DiffHtmlText(prevText, curText);
-            // TODO
-            const tableRows = [[`Comment TEST ${comment.id}`, textChange]];
 
-            const changeId = 0; // TODO Something meaningful
-            const updateStr = CreateHTMLForChangesOnDate(changeId, curVersion.modifiedBy, curVersion.modifiedDate, tableRows);
-
-            if (updateStr) {
-                s += `<hr><div>${updateStr}</div>`;
+            let action = '';
+            if (idx + 1 === comment.allUpdates.length) {
+                action = 'created';
             }
+            else if (curVersion?.isDeleted && !prevVersion?.isDeleted) {
+                action = 'deleted';
+            }
+            else {
+                action = 'edited';
+            }
+
+            // For consistency with the other updates, each comment update gets its own table. So the table consists of only one row.
+            const tableRows = [[`Comment ${comment.id} ${action}`, textChange]];
+
+            allTables.push({
+                authorIdentity: curVersion.modifiedBy,
+                changedDate: curVersion.modifiedDate,
+                tableRows: tableRows,
+                idNumber: ''
+            });
         }
     }
 
-    return s;
+    return allTables;
 }
 
 
@@ -635,13 +632,54 @@ async function LoadAndSetDiffInHTMLDocument()
         GetCommentsWithHistory(workItemId, projectName)
     ]);
 
-    // TODO: Proper sorting by date
     // TODO: Maybe merge the work item updates with the comment updates where possible?
-    // TODO: Remove System.History printing.
-    let htmlString = CreateHTMLFromRevisionUpdates(revisionUpdates, fieldsPropertiesMap);
-    htmlString = CreateHTMLFromComments(comments) + htmlString;
+    const tablesForRevisionUpdates = GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap);
+    const tablesForCommentUpdates = GetTableInfosForEachComment(comments);
+    const allUpdateTables = tablesForRevisionUpdates.concat(tablesForCommentUpdates);
 
+    const htmlString = CreateHTMLForAllUpdates(allUpdateTables);
     GetHtmlDisplayField().innerHTML = htmlString;
+}
+
+
+function CreateHTMLForAllUpdates(allUpdateTables)
+{
+    // Sort from newest to oldest.
+    allUpdateTables.sort((a, b) => b.changedDate - a.changedDate);
+
+    let s = '';
+    for (const updateInfo of allUpdateTables) {
+        const updateStr = CreateHTMLForUpdateOnSingleDate(updateInfo);
+        if (updateStr) {
+            s += `<hr><div>${updateStr}</div>`;
+        }
+    }
+    return s;
+}
+
+
+function CreateHTMLForUpdateOnSingleDate(updateInfo)
+{
+    const tableRows = updateInfo.tableRows;
+    if (!tableRows || tableRows.length == 0) {
+        return null;
+    }
+
+    tableRows.sort((a, b) => a[0].localeCompare(b[0]));
+
+    const changedByName = GetIdentityName(updateInfo.authorIdentity);
+    const avatarHtml = GetIdentityAvatarHtml(updateInfo.authorIdentity);
+    const changedDate = updateInfo.changedDate ? FormatDate(updateInfo.changedDate) : 'an unknown date';
+    const idStr = updateInfo.idNumber ? ` (update ${updateInfo.idNumber})` : '';
+
+    let s = `<div class="changeHeader">${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>${idStr}:</div>`;
+    let tableRowsStr = '';
+    for (const [friendlyName, diff] of tableRows) {
+        tableRowsStr += `<tr class="diffCls"><td class="diffCls">${friendlyName}</td><td class="diffCls">${diff}</td></tr>`
+    }
+    s += `<table class="diffCls"><thead class="diffCls"><tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr></thead>
+        <tbody>${tableRowsStr}</tbody></table>`;
+    return s;
 }
 
 
