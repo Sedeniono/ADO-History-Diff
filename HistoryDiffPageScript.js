@@ -757,7 +757,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
 }
 
 
-async function IsDarkModeActive()
+function IsDarkModeActive()
 {
     // It would be awesome if we could have simply used the css '@media (prefers-color-scheme: dark)' feature. However,
     // this queries the browser setting regarding light or dark theme. But ADO ignores that setting, and instead
@@ -782,13 +782,8 @@ async function IsDarkModeActive()
     // There is also 'gAdoSDK.getPageContext().globalization.theme', but 'getPageContext()' always threw an error for me, 
     // complaining about init() not having finished (although it should have).
     //
-    // So instead we simply read the text color and guess the theme from there. The main disadvantage here is that this method
-    // hinges upon the UI already having rendered the iframe. This shouldn't be a problem for us: When we call IsDarkModeActive(),
-    // there were already various REST requests before, so we should be fine. But just in case, we also give it a bit more time.
-    await new Promise((resolve) => {
-        setTimeout(resolve, 50);
-    });
-	
+    // So instead we simply read the text color and guess the theme from there.
+
     const textColorString = window.getComputedStyle(document.body, null).getPropertyValue('color');
     if (textColorString.indexOf('rgb') < 0) {
         console.log('HistoryDiff: Failed to detect theme.');
@@ -807,10 +802,10 @@ async function IsDarkModeActive()
 }
 
 
-async function DetectAndApplyDarkMode()
+function DetectAndApplyDarkMode()
 {
     // We need to apply dark mode dynamically; see comment in IsDarkModeActive().
-    const darkMode = await IsDarkModeActive();
+    const darkMode = IsDarkModeActive();
     if (darkMode) {
         document.head.insertAdjacentHTML(
             'beforeend', 
@@ -939,6 +934,13 @@ function PatchWorkItemTrackingRestClient(WorkItemTrackingRestClient)
 // again. Instead, the 'onUnloaded' and 'onLoaded' events are called (see CreateWorkItemPageEvents()).
 async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
 {
+    // Called by the ADO API after the client received and applied the theme. Also called when the user changes the theme
+    // Doesn't seem to be documented.
+    // https://github.com/microsoft/azure-devops-extension-sdk/blob/8dda1027b31c1fbe97ba4d92ee1bf541ed116061/src/SDK.ts#L495
+    window.addEventListener('themeApplied', function (data) {
+        DetectAndApplyDarkMode();
+    });
+
     // Register the actual page shown by ADO.
     // Based on https://learn.microsoft.com/en-us/azure/devops/extend/develop/add-workitem-extension?view=azure-devops-2019#htmljavascript-sample
     // and https://learn.microsoft.com/en-us/azure/devops/extend/develop/add-workitem-extension?view=azure-devops-2019#add-a-page
@@ -971,10 +973,6 @@ async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.
     // This causes ADO to show the 'spinning loading indicator' until we are ready.
     await LoadAndSetDiffInHTMLDocument();
-
-    // Needs to come after the previous call so that the UI had ample chances to update the UI at least once.
-    // Otherwise, our dark mode detection does not work. See comment in IsDarkModeActive().
-    await DetectAndApplyDarkMode();
 
     adoSDK.notifyLoadSucceeded();
 }
