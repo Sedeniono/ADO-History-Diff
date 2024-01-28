@@ -225,7 +225,7 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
     }
 
     if (revUpdate.relations) {
-        // TODO: What about the comment on a relation? Show it? What about that comment's history?
+        // TODO: What about the comment on a relation? Show it? What about that link comment's history?
         if (revUpdate.relations.added) {
             for (const relation of revUpdate.relations.added) {
                 const changeStrings = GetUserFriendlyStringsOfRelationChange(relation);
@@ -492,11 +492,6 @@ const COMMENT_UPDATE_ID = 'COMMENT';
 
 function GetTableInfosForEachComment(comments)
 {
-    // TODO:
-    // - Test with more than 200 comments.
-    // - Test with more than 200 edits.
-    // - Link comments seem to be different again?
-
     let allCommentTables = [];
 
     for (const comment of comments) {
@@ -547,6 +542,7 @@ function GetTableInfosForEachComment(comments)
 // However, every 'Comment' element contains an additional property 'allUpdates' that is an array of all versions of the comment.
 async function GetCommentsWithHistory(workItemId, projectName)
 {
+    // Note: In contrast to getUpdates(), apparently the REST request is not paged. It returns always all comments by default.
     const allComments = await gWorkItemRESTClient.getComments_Patched(
         workItemId, projectName, /*expand*/ 'none', undefined, /*includeDeleted*/ true);
     
@@ -561,6 +557,7 @@ async function GetCommentsWithHistory(workItemId, projectName)
         // If there is more than one version, start the request for all versions of the comment. We will await the
         // answer for all comments simultaneously below.
         if (comment?.version > 1 && comment?.id) {
+            // Note: In contrast to getUpdates(), apparently the REST request is not paged. It returns always all versions by default.
             const versionsPromise = gWorkItemRESTClient.getCommentsVersions_Patched(workItemId, projectName, comment.id);
             commentsAwaiting.push(comment);
             versionsPromises.push(versionsPromise);
