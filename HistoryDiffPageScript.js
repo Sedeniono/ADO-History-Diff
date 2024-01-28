@@ -76,7 +76,11 @@ function RemoveStyle(string)
 
 function GetHtmlDisplayField()
 {
-    return document.getElementById('htmlDivDiff');
+    const elem = document.getElementById('htmlDivDiff');
+    if (!elem) {
+        throw new Error('HistoryDiff: HTML element not found.');
+    }
+    return elem;
 }
 
 
@@ -140,6 +144,7 @@ function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap
         }
 
         const tableInfosOfUpdate = GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate);
+        // Note: Table of length 0 is allowed, because we want to merge comment updates with it later on. That way we can display the correct update id.
         if (tableInfosOfUpdate) {
             allUpdateTables.push(tableInfosOfUpdate);
         }
@@ -223,16 +228,18 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
         // TODO: What about the comment on a relation? Show it? What about that comment's history?
         if (revUpdate.relations.added) {
             for (const relation of revUpdate.relations.added) {
-                const [friendlyName, change] = GetUserFriendlyStringsOfRelationChange(relation);
-                if (typeof friendlyName !== 'undefined') {
+                const changeStrings = GetUserFriendlyStringsOfRelationChange(relation);
+                if (typeof changeStrings !== 'undefined') {
+                    const [friendlyName, change] = changeStrings;
                     tableRows.push([`Link added: ${friendlyName}`, `<ins class="diffCls">${change}</ins>`]);
                 }
             }
         }
         if (revUpdate.relations.removed) {
             for (const relation of revUpdate.relations.removed) {
-                const [friendlyName, change] = GetUserFriendlyStringsOfRelationChange(relation);
-                if (typeof friendlyName !== 'undefined') {
+                const changeStrings = GetUserFriendlyStringsOfRelationChange(relation);
+                if (typeof changeStrings !== 'undefined') {
+                    const [friendlyName, change] = changeStrings;
                     tableRows.push([`Link removed: ${friendlyName}`, `<del class="diffCls">${change}</del>`]);
                 }
             }                
@@ -244,8 +251,9 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
         // array anyway. Also see: https://developercommunity.visualstudio.com/t/unable-to-update-a-hyperlink-in-a-work-item-via-re/1037054
         if (revUpdate.relations.updated) {
             for (const relation of revUpdate.relations.updated) {
-                const [friendlyName, change] = GetUserFriendlyStringsOfRelationChange(relation);
-                if (typeof friendlyName !== 'undefined') {
+                const changeStrings = GetUserFriendlyStringsOfRelationChange(relation);
+                if (typeof changeStrings !== 'undefined') {
+                    const [friendlyName, change] = changeStrings;
                     tableRows.push([`Link updated: ${friendlyName}`, `<ins class="diffCls">${change}</ins>`]);
                 }
             }
@@ -282,7 +290,7 @@ function GetUserFriendlyStringsOfRelationChange(relation)
 
         const friendlyName = relation.attributes?.name;
 
-        // TODO: Need to figure out how to convert the relation.url to a user friendly link. I think we need to parse it.
+        // TODO: Need to figure out how to convert the relation.url to a user friendly link. I think we need to parse it manually.
         // See e.g. https://developercommunity.visualstudio.com/t/artifact-uri-format-in-external-link-of-work-items/964448
         // The relation.url is e.g.: 
         //  - Repo link: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
@@ -478,40 +486,37 @@ async function GetAllRevisionUpdates(workItemId, projectName)
 }
 
 
+// Artificial id used for comment updates.
+const COMMENT_UPDATE_ID = 'COMMENT';
+
+
 function GetTableInfosForEachComment(comments)
 {
     // TODO:
-    // - Get comments
-    //   https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments/get-comments?view=azure-devops-rest-5.1&tabs=HTTP
-    //   expand=reactions??? But not even the default history shows the reactions history (probably doesn't even exist?)
-    // - For every comment with version > 1: Get versions
-    //   https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments-versions/list?view=azure-devops-rest-5.1
-    // - Create diffs
     // - Test with more than 200 comments.
     // - Test with more than 200 edits.
     // - Link comments seem to be different again?
 
-    let allTables = [];
+    let allCommentTables = [];
 
     for (const comment of comments) {
         if (!comment || !comment.allUpdates) {
             continue;
         }
 
-        // Sort from newest to oldest.
-        // TODO: This should be unnecessary now.
-        comment.allUpdates.sort((a, b) => b.version - a.version);
+        // Ensure sorting from oldest to newest.
+        comment.allUpdates.sort((a, b) => a.version - b.version);
 
         for (let idx = 0; idx < comment.allUpdates.length; ++idx) {
             const curVersion = comment.allUpdates[idx];
-            const prevVersion = idx < comment.allUpdates.length ? comment.allUpdates[idx + 1] : null;
+            const prevVersion = idx !== 0 ? comment.allUpdates[idx - 1] : null;
 
             const curText = curVersion?.isDeleted ? '' : curVersion?.text;
             const prevText = prevVersion?.isDeleted ? '' : prevVersion?.text;
             const textChange = DiffHtmlText(prevText, curText);
 
             let action = '';
-            if (idx + 1 === comment.allUpdates.length) {
+            if (idx === 0) {
                 action = 'created';
             }
             else if (curVersion?.isDeleted && !prevVersion?.isDeleted) {
@@ -522,18 +527,19 @@ function GetTableInfosForEachComment(comments)
             }
 
             // For consistency with the other updates, each comment update gets its own table. So the table consists of only one row.
+            // (Except if we merge it later on with another update.)
             const tableRows = [[`Comment ${comment.id} ${action}`, textChange]];
 
-            allTables.push({
+            allCommentTables.push({
                 authorIdentity: curVersion.modifiedBy,
                 changedDate: curVersion.modifiedDate,
                 tableRows: tableRows,
-                idNumber: ''
+                idNumber: COMMENT_UPDATE_ID
             });
         }
     }
 
-    return allTables;
+    return allCommentTables;
 }
 
 
@@ -574,6 +580,76 @@ async function GetCommentsWithHistory(workItemId, projectName)
     return allComments.comments;
 }
 
+
+
+function GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap)
+{
+    const tablesForRevisionUpdates = GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap);
+    const tablesForCommentUpdates = GetTableInfosForEachComment(comments);
+    const allUpdateTables = tablesForRevisionUpdates.concat(tablesForCommentUpdates);
+    SortAndMergeAllTableInfosInplace(allUpdateTables);
+    return allUpdateTables;
+}
+
+
+function SortAndMergeAllTableInfosInplace(allUpdateTables)
+{
+    // Sort from newest to oldest.
+    allUpdateTables.sort((a, b) => b.changedDate - a.changedDate);
+
+    // Especially because comments have been retrieved separately, there are updates that have been made at the same date 
+    // by the same person. Merge these elements into one.
+    let baseIdx = 0;
+    while (baseIdx < allUpdateTables.length - 1) {
+        // Find range of elements that we will merge: [baseIdx, idxNextDistinct)
+        // Assumes that the array is already sorted appropriately (especially by date).
+        let idxNextDistinct = baseIdx + 1;
+        while (idxNextDistinct < allUpdateTables.length && CanUpdatesBeMerged(allUpdateTables[baseIdx], allUpdateTables[idxNextDistinct])) {
+            ++idxNextDistinct;
+        }
+
+        if (idxNextDistinct === baseIdx + 1) {
+            ++baseIdx;
+            continue;
+        }
+
+        // Find a suitable element in the merge-range into which we will merge all other elements.
+        let idxToMergeInto = baseIdx;
+        while (idxToMergeInto < idxNextDistinct && allUpdateTables[idxToMergeInto].idNumber === COMMENT_UPDATE_ID) {
+            ++idxToMergeInto;
+        }
+        
+        if (idxToMergeInto >= idxNextDistinct) {
+            ++baseIdx;
+            continue;
+        }
+
+        const mergeInto = allUpdateTables[idxToMergeInto];
+
+        // Copy all table rows in [baseIdx, idxNextDistinct) into 'mergeInto'.
+        for (let idxForMerge = baseIdx; idxForMerge < idxNextDistinct; ++idxForMerge) {
+            if (idxForMerge === idxToMergeInto) {
+                continue;
+            }
+            const mergeSrc = allUpdateTables[idxForMerge];
+            mergeInto.tableRows.push.apply(mergeInto.tableRows, mergeSrc.tableRows);
+        }
+
+        // Remove all elements in the merge-range except the element that we merged everything into.
+        allUpdateTables.splice(idxToMergeInto + 1, idxNextDistinct - idxToMergeInto - 1);
+        allUpdateTables.splice(baseIdx, idxToMergeInto - baseIdx);
+
+        baseIdx = idxToMergeInto + 1;
+    }
+}
+
+
+function CanUpdatesBeMerged(update1, update2)
+{
+    return update1.authorIdentity.descriptor === update2.authorIdentity.descriptor 
+        && update1.changedDate && update2.changedDate && update1.changedDate.getTime() === update2.changedDate.getTime()
+        && (update1.idNumber === COMMENT_UPDATE_ID || update2.idNumber === COMMENT_UPDATE_ID);
+}
 
 
 // Returns an object, where the property name is the work-item-field-type's referenceName such as 'System.Description', and the value is
@@ -634,11 +710,7 @@ async function LoadAndSetDiffInHTMLDocument()
         GetCommentsWithHistory(workItemId, projectName)
     ]);
 
-    // TODO: Maybe merge the work item updates with the comment updates where possible?
-    const tablesForRevisionUpdates = GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap);
-    const tablesForCommentUpdates = GetTableInfosForEachComment(comments);
-    const allUpdateTables = tablesForRevisionUpdates.concat(tablesForCommentUpdates);
-
+    const allUpdateTables = GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap);
     const htmlString = CreateHTMLForAllUpdates(allUpdateTables);
     GetHtmlDisplayField().innerHTML = htmlString;
 }
@@ -646,9 +718,6 @@ async function LoadAndSetDiffInHTMLDocument()
 
 function CreateHTMLForAllUpdates(allUpdateTables)
 {
-    // Sort from newest to oldest.
-    allUpdateTables.sort((a, b) => b.changedDate - a.changedDate);
-
     let s = '';
     for (const updateInfo of allUpdateTables) {
         const updateStr = CreateHTMLForUpdateOnSingleDate(updateInfo);
@@ -667,14 +736,15 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
         return null;
     }
 
+    // Sort alphabetically.
     tableRows.sort((a, b) => a[0].localeCompare(b[0]));
 
     const changedByName = GetIdentityName(updateInfo.authorIdentity);
     const avatarHtml = GetIdentityAvatarHtml(updateInfo.authorIdentity);
-    const changedDate = updateInfo.changedDate ? FormatDate(updateInfo.changedDate) : 'an unknown date';
-    const idStr = updateInfo.idNumber ? ` (update ${updateInfo.idNumber})` : '';
+    const changedDateStr = updateInfo.changedDate ? FormatDate(updateInfo.changedDate) : 'an unknown date';
+    const idStr = (updateInfo.idNumber && updateInfo.idNumber !== COMMENT_UPDATE_ID) ? ` (update ${updateInfo.idNumber})` : '';
 
-    let s = `<div class="changeHeader">${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDate}</i>${idStr}:</div>`;
+    let s = `<div class="changeHeader">${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDateStr}</i>${idStr}:</div>`;
     let tableRowsStr = '';
     for (const [friendlyName, diff] of tableRows) {
         tableRowsStr += `<tr class="diffCls"><td class="diffCls">${friendlyName}</td><td class="diffCls">${diff}</td></tr>`
@@ -806,9 +876,12 @@ function PatchWorkItemTrackingRestClient(WorkItemTrackingRestClient)
     // getComments() from the azure-devops-extension-api (at least until version 4.230.0) uses api-version=5.0-preview.2, which 
     // doesn't allow to query deleted comments. But we need that. So we define a custom function that uses the newer REST API version 5.1.
     // So our function corresponds to this REST request: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments/get-comments?view=azure-devops-rest-5.1
+    // The implementation is a copy & paste of the original getComments() javascript code, with proper adaptions.
     WorkItemTrackingRestClient.prototype.getComments_Patched = function (id, project, expand, top, includeDeleted, order) {
+        // @ts-ignore
         return __awaiter(this, void 0, void 0, function () {
             var queryValues;
+            // @ts-ignore
             return __generator(this, function (_a) {
                 queryValues = {
                     '$expand': expand,
@@ -832,8 +905,10 @@ function PatchWorkItemTrackingRestClient(WorkItemTrackingRestClient)
     // azure-devops-extension-api (at least until version 4.230.0) does not provide a wrapper for getting the comments versions.
     // So we define it ourselves. This corresponds to: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments-versions/list?view=azure-devops-rest-5.1
     WorkItemTrackingRestClient.prototype.getCommentsVersions_Patched = function (id, project, commentId) {
+        // @ts-ignore
         return __awaiter(this, void 0, void 0, function () {
             var queryValues;
+            // @ts-ignore
             return __generator(this, function (_a) {
                 queryValues = {};
                 return [2 /*return*/, this.beginRequest({
