@@ -523,7 +523,7 @@ function GetTableInfosForEachComment(comments)
 
             // For consistency with the other updates, each comment update gets its own table. So the table consists of only one row.
             // (Except if we merge it later on with another update.)
-            const tableRows = [[`Comment ${comment.id} ${action}`, textChange]];
+            const tableRows = [[`Comment ${action}`, textChange]];
 
             allCommentTables.push({
                 authorIdentity: curVersion.modifiedBy,
