@@ -934,28 +934,27 @@ function PatchWorkItemTrackingRestClient(WorkItemTrackingRestClient)
 // again. Instead, the 'onUnloaded' and 'onLoaded' events are called (see CreateWorkItemPageEvents()).
 async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
 {
-    // Called by the ADO API after the client received and applied the theme. Also called when the user changes the theme
-    // Doesn't seem to be documented.
+    // Called by the ADO API after the client received and applied the ADO theme. Also called when the user changes the theme
+    // while our extension is already loaded. The event doesn't seem to be documented, but it can be seen in the source:
     // https://github.com/microsoft/azure-devops-extension-sdk/blob/8dda1027b31c1fbe97ba4d92ee1bf541ed116061/src/SDK.ts#L495
     window.addEventListener('themeApplied', function (data) {
         DetectAndApplyDarkMode();
     });
 
-    // Register the actual page shown by ADO.
-    // Based on https://learn.microsoft.com/en-us/azure/devops/extend/develop/add-workitem-extension?view=azure-devops-2019#htmljavascript-sample
-    // and https://learn.microsoft.com/en-us/azure/devops/extend/develop/add-workitem-extension?view=azure-devops-2019#add-a-page
-    // Register function: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-sdk/#functions
-    // Note: I couldn't get the adoSDK.ready() function to work; it was never called. Also, there are error messages if I do not call 
-    // the adoSDK.register() function before init(). Moreover, in principle adoSDK.getContributionId() could be used to get the first
-    // parameter for the register() function, but this does not work before init(). So I hardcoded the value.
-    adoSDK.register('Sedenion.HistoryDiff.historydiff', function () {
-            return CreateWorkItemPageEvents();
-        });
-
     // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-sdk/#azure-devops-extension-sdk-init
     // Options: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-sdk/iextensioninitoptions
     // We set 'loaded' to false, so that ADO shows the "spinning loading indicator" while we get all work item updates.
     adoSDK.init({applyTheme: true, loaded: false});
+        
+    adoSDK.ready().then(function() {
+        // Register the actual page shown by ADO.
+        // Based on https://learn.microsoft.com/en-us/azure/devops/extend/develop/add-workitem-extension?view=azure-devops-2019#htmljavascript-sample
+        // and https://learn.microsoft.com/en-us/azure/devops/extend/develop/add-workitem-extension?view=azure-devops-2019#add-a-page
+        // Register function: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-sdk/#functions
+        adoSDK.register(adoSDK.getContributionId(), function () {
+            return CreateWorkItemPageEvents();
+        });
+    });
 
     gAdoSDK = adoSDK;
     gAdoAPI = adoAPI;
