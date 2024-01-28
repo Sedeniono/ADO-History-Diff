@@ -225,13 +225,19 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
     }
 
     if (revUpdate.relations) {
-        // TODO: What about the comment on a relation? Show it? What about that link comment's history?
         if (revUpdate.relations.added) {
             for (const relation of revUpdate.relations.added) {
                 const changeStrings = GetUserFriendlyStringsOfRelationChange(relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
-                    tableRows.push([`Link added: ${friendlyName}`, `<ins class="diffCls">${change}</ins>`]);
+                    // Note: The comment text is the *latest* version of the comment, i.e. not the comment text with
+                    // which the link got added if the comment text got edited later. We still show it.
+                    // TODO: Show the actual history.
+                    let commentHtml = '';
+                    if (relation.attributes?.comment) {
+                        commentHtml = `<br><i>Current link comment:</i> <ins class="diffCls">${EscapeHtml(relation.attributes.comment)}</ins>`;
+                    }
+                    tableRows.push([`Link added: ${friendlyName}`, `<ins class="diffCls">${change}</ins>${commentHtml}`]);
                 }
             }
         }
