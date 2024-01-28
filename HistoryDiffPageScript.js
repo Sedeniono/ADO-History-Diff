@@ -551,7 +551,7 @@ async function GetCommentsWithHistory(workItemId, projectName)
         workItemId, projectName, /*expand*/ 'none', undefined, /*includeDeleted*/ true);
     
     if (!allComments || !allComments.comments || allComments.comments.length == 0) {
-        return null;
+        return [];
     }
 
     let commentsAwaiting = [];
