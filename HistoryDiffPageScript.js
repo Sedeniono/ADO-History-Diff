@@ -399,12 +399,17 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         case gFieldTypeEnum.String:
         case gFieldTypeEnum.PlainText:
         {
-            const oldValue = value.oldValue ?? '';
-            const newValue = value.newValue ?? '';
             // We simply feed htmldiff the values with escaped special characters, meaning that htmldiff should not see any HTML elements.
             // Using a different diff-library (jsdiff or diff-match-patch) is not worth the additional dependency, since the only work item
-            // fields that contain a significant amount of text are html elements. (Plain text or string fields do not support multiple lines.)
-            return gHtmlDiff(EscapeHtml(oldValue), EscapeHtml(newValue), 'diffCls');
+            // fields that contain a significant amount of text are html elements.
+            // But beforehand we replace newline characters with '<br>' to get a good diff if line breaks exist. By default, ADO uses a 
+            // single line for 'String' and 'PlainText' fields. However, we want to support extensions such as
+            // https://marketplace.visualstudio.com/items?itemName=krypu.multiline-plain-text-field that do display multiple lines.
+            const newLineRegex = /(?:\r\n|\r|\n)/g;
+            const oldValue = EscapeHtml(value.oldValue ?? '').replace(newLineRegex, '<br>');
+            const newValue = EscapeHtml(value.newValue ?? '').replace(newLineRegex, '<br>');
+            const diff = gHtmlDiff(oldValue, newValue, 'diffCls');
+            return diff;
         }
 
         case gFieldTypeEnum.Integer:
