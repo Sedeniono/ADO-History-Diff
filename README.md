@@ -18,20 +18,25 @@ Changes to the text are much easier to spot.
 
 
 # Installation
-Installation:
+**Installation:**
 * Via the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff).
 * If you are using the on-premise Azure DevOps Server, you can also download the extension's vsix package from the [releases here on GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases) and install it directly without using the marketplace.
 
 Please see Microsoft's official installation instruction for extensions for [Azure DevOps Services](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops) and [Azure DevOps Server](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022).
 
 
-Requirements:
+**Requirements:**
 * Azure DevOps:
   * On-premise: [Azure DevOps Server](https://azure.microsoft.com/en-us/products/devops/server) 2019, 2020 or 2022. (Tested with 2019.1.2, 2020.1.2 and 2022.1.)
   * Also supports the cloud variation [Azure DevOps Services](https://azure.microsoft.com/en-us/products/devops)
 * Users should use a reasonably recent browser (year >2020). Tested with Edge, Chrome and Firefox.
 
 
+**Change log:**  
+For release notes, please visit the [releases page](https://github.com/Sedeniono/ADO-History-Diff/releases).
+
+
+**Further information:**  
 If you want to inspect the contents/source code of the vsix package, it can be extracted using tools such as [7-zip](https://www.7-zip.org/).
 If you want to build the vsix package yourself (also compare the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/extend/get-started/node)):
 * Get the source code from the [extension's GitHub repository](https://github.com/Sedeniono/ADO-History-Diff).
