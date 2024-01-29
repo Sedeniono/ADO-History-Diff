@@ -235,7 +235,7 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
                     // TODO: Show the actual history.
                     let commentHtml = '';
                     if (relation.attributes?.comment) {
-                        commentHtml = `<br><i>Current link comment:</i> <ins class="diffCls">${EscapeHtml(relation.attributes.comment)}</ins>`;
+                        commentHtml = `<br><i>Newest link comment:</i> <ins class="diffCls">${EscapeHtml(relation.attributes.comment)}</ins>`;
                     }
                     tableRows.push([`Link added: ${friendlyName}`, `<ins class="diffCls">${change}</ins>${commentHtml}`]);
                 }
