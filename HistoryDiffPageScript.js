@@ -309,15 +309,13 @@ function GetUserFriendlyStringsOfRelationChange(relation)
         const friendlyName = 'Attachment';
         const rawFilename = relation.attributes?.name;
         if (rawFilename) {
-            const filename = EscapeHtml(rawFilename);
-            // TODO: The filename on the server (i.e. the file pointed to by relation.url) is some GUID. So browsers will download the file
-            // with that GUID as filename. The 'download' attribute of <a> should change the filename of the downloaded file to the correct one, but
-            // this did not work in my tests (neither in Edge nor Firefox). Googling this, usually there are 2 reasons why this happens: First, 
-            // when the url has a different origin. But this is not the case here. (The relation.url is absolute, but even converting it to
-            // a relative one does not help in my tests.) Second, if the http header of the download contains the 'Content-Disposition'
-            // header with a 'filename'. The 'Content-Disposition' is actually set by ADO, but without a filename, so I think this is also
-            // not the reason. Weird.
-            const value = `<a href="${relation.url}" download="${rawFilename}">${filename}</a>`;
+            const htmlFilename = EscapeHtml(rawFilename);
+            const urlFilename = encodeURIComponent(rawFilename);
+            // The 'relation.url' matches with the REST API:
+            // https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/attachments/get?view=azure-devops-rest-5.1
+            // We add the 'fileName' parameter so that the downloaded file has the correct name; otherwise, it would be some GUID-like string.
+            // Also, we enforce the download because otherwise a video file would completely replace the extension's iframe.
+            const value = `<a href="${relation.url}?fileName=${urlFilename}&download=true">${htmlFilename}</a>`;
             return [friendlyName, value];
         }
         else {
