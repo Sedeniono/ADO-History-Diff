@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "HistoryDiff",
     "publisher": "Sedenion",
-    "version": "1.1.0.0",
+    "version": "1.1.0.41",
     "name": "History Diff",
     "description": "Azure DevOps extension to show the history of work item fields with proper diffs.",
     "public": true,
@@ -72,33 +72,8 @@
             "addressable": true
         },
         {
-            "path": "HistoryDiffPageScript.js",
+            "path": "dist",
             "addressable": true
-        },        
-        {
-            "path": "node_modules/azure-devops-extension-sdk",
-            "addressable": true,
-            "packagePath": "lib"
-        }, 
-        {
-            "path": "node_modules/azure-devops-extension-api",
-            "addressable": true,
-            "packagePath": "api"
-        },
-        {
-            "path": "node_modules/whatwg-fetch/dist/fetch.umd.js",
-            "addressable": true,
-            "packagePath": "whatwg-fetch/dist/fetch.umd.js"
-        },
-        {
-            "path": "node_modules/requirejs",
-            "addressable": true,
-            "packagePath": "requirejs"
-        },
-        {
-            "path": "node_modules/node-htmldiff/js/htmldiff.js",
-            "addressable": true,
-            "packagePath": "htmldiff/htmldiff.js"
         },
         {
             "path": "images/HistoryComparison.png",

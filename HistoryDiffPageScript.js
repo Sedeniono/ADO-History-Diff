@@ -958,3 +958,15 @@ async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
     adoSDK.notifyLoadSucceeded();
 }
 
+
+
+require(['azure-devops-extension-sdk', 
+         'azure-devops-extension-api', 
+         'azure-devops-extension-api/WorkItemTracking/index.min', 
+         'node-htmldiff/js/htmldiff'
+        ], 
+        // @ts-ignore
+        function (adoSDK, adoAPI, workItemTracking, htmldiff) {
+            InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff);
+        }
+);
