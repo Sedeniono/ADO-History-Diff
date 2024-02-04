@@ -552,7 +552,7 @@ function GetTableInfosForEachComment(comments)
 async function GetCommentsWithHistory(workItemId, projectName)
 {
     // Note: In contrast to getUpdates(), apparently the REST request is not paged. It returns always all comments by default.
-    const allComments = await gWorkItemRESTClient.getComments_Patched(
+    const allComments = await GetCommentsRESTRequest(
         workItemId, projectName, /*expand*/ 'none', undefined, /*includeDeleted*/ true);
     
     if (!allComments || !allComments.comments || allComments.comments.length == 0) {
@@ -567,7 +567,7 @@ async function GetCommentsWithHistory(workItemId, projectName)
         // answer for all comments simultaneously below.
         if (comment?.version > 1 && comment?.id) {
             // Note: In contrast to getUpdates(), apparently the REST request is not paged. It returns always all versions by default.
-            const versionsPromise = gWorkItemRESTClient.getCommentsVersions_Patched(workItemId, projectName, comment.id);
+            const versionsPromise = GetCommentsVersionsRESTRequest(workItemId, projectName, comment.id);
             commentsAwaiting.push(comment);
             versionsPromises.push(versionsPromise);
         }
@@ -586,6 +586,44 @@ async function GetCommentsWithHistory(workItemId, projectName)
     return allComments.comments;
 }
 
+
+// getComments() from the azure-devops-extension-api (at least until version 4.230.0) uses api-version=5.0-preview.2, which 
+// doesn't allow to query deleted comments. But we need that. So we define a custom function that uses the newer REST API version 5.1.
+// So our function corresponds to this REST request: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments/get-comments?view=azure-devops-rest-5.1
+async function GetCommentsRESTRequest(id, project, expand, top, includeDeleted, order)
+{
+    return gWorkItemRESTClient.beginRequest({
+        apiVersion: '5.1-preview.3',
+        routeTemplate: '{project}/_apis/wit/workItems/{id}/comments',
+        routeValues: {
+            project: project,
+            id: id
+        },
+        queryParams: {
+            '$expand': expand,
+            '$top': top,
+            includeDeleted: includeDeleted,
+            order: order
+        }
+    });
+}
+
+
+// azure-devops-extension-api (at least until version 4.230.0) does not provide a wrapper for getting the comments versions.
+// So we define it ourselves. This corresponds to: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments-versions/list?view=azure-devops-rest-5.1
+async function GetCommentsVersionsRESTRequest(id, project, commentId)
+{
+    return gWorkItemRESTClient.beginRequest({
+        apiVersion: '5.1-preview.1',
+        routeTemplate: '{project}/_apis/wit/workItems/{id}/comments/{commentId}/versions',
+        routeValues: {
+            project: project,
+            id: id,
+            commentId: commentId
+        },
+        queryParams: {}
+    });
+}
 
 
 function GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap)
@@ -872,47 +910,6 @@ function CreateWorkItemPageEvents()
 }
 
 
-function PatchWorkItemTrackingRestClient(WorkItemTrackingRestClient)
-{
-    // getComments() from the azure-devops-extension-api (at least until version 4.230.0) uses api-version=5.0-preview.2, which 
-    // doesn't allow to query deleted comments. But we need that. So we define a custom function that uses the newer REST API version 5.1.
-    // So our function corresponds to this REST request: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments/get-comments?view=azure-devops-rest-5.1
-    WorkItemTrackingRestClient.prototype.getComments_Patched = function (id, project, expand, top, includeDeleted, order) {
-        return this.beginRequest({
-            apiVersion: '5.1-preview.3',
-            routeTemplate: '{project}/_apis/wit/workItems/{id}/comments',
-            routeValues: {
-                project: project,
-                id: id
-            },
-            queryParams: {
-                '$expand': expand,
-                '$top': top,
-                includeDeleted: includeDeleted,
-                order: order
-            }
-        });
-    };
-
-    // azure-devops-extension-api (at least until version 4.230.0) does not provide a wrapper for getting the comments versions.
-    // So we define it ourselves. This corresponds to: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments-versions/list?view=azure-devops-rest-5.1
-    WorkItemTrackingRestClient.prototype.getCommentsVersions_Patched = function (id, project, commentId) {
-        return this.beginRequest({
-            apiVersion: '5.1-preview.1',
-            routeTemplate: '{project}/_apis/wit/workItems/{id}/comments/{commentId}/versions',
-            routeValues: {
-                project: project,
-                id: id,
-                commentId: commentId
-            },
-            queryParams: {}
-        });
-    };
-
-       
-}
-
-
 // Called when the user opens the new 'History' tab (not called when simply opening a work item, i.e. called
 // lazily when actually required). Note that in queries the user can move up and down through the found items,
 // and there this function gets called only once for every new work item type (bug, user story, task, etc.)
@@ -949,8 +946,6 @@ async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
     gWorkItemTracking = workItemTracking;
     gFieldTypeEnum = workItemTracking.FieldType;
     gWorkItemFormServiceId = workItemTracking.WorkItemTrackingServiceIds['WorkItemFormService'];
-    
-    PatchWorkItemTrackingRestClient(gWorkItemTracking.WorkItemTrackingRestClient);
     
     // getClient(): https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/#azure-devops-extension-api-getclient
     // Gives a WorkItemTrackingRestClient: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient
