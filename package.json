@@ -1,9 +1,9 @@
 {
   "name": "historydiff",
   "scripts": {
-    "build":         "webpack --config webpack.config.js --mode=production  && npx tfx-cli extension create",
-    "build-dev":     "webpack --config webpack.config.js --mode=development && npx tfx-cli extension create --rev-version",
-    "build-dev-opt": "webpack --config webpack.config.js --mode=production  && npx tfx-cli extension create --rev-version"
+    "build":         "set \"NODE_ENV=production\"  &&  webpack --config webpack.config.js --mode=production  && npx tfx-cli extension create",
+    "build-dev":     "                                 webpack --config webpack.config.js --mode=development && npx tfx-cli extension create --rev-version",
+    "build-dev-opt": "set \"NODE_ENV=production\"  &&  webpack --config webpack.config.js --mode=production  && npx tfx-cli extension create --rev-version"
   },
   "dependencies": {
     "azure-devops-extension-api": "^4.227.0",
