@@ -877,52 +877,35 @@ function PatchWorkItemTrackingRestClient(WorkItemTrackingRestClient)
     // getComments() from the azure-devops-extension-api (at least until version 4.230.0) uses api-version=5.0-preview.2, which 
     // doesn't allow to query deleted comments. But we need that. So we define a custom function that uses the newer REST API version 5.1.
     // So our function corresponds to this REST request: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments/get-comments?view=azure-devops-rest-5.1
-    // The implementation is a copy & paste of the original getComments() javascript code, with proper adaptions.
     WorkItemTrackingRestClient.prototype.getComments_Patched = function (id, project, expand, top, includeDeleted, order) {
-        // @ts-ignore
-        return __awaiter(this, void 0, void 0, function () {
-            var queryValues;
-            // @ts-ignore
-            return __generator(this, function (_a) {
-                queryValues = {
-                    '$expand': expand,
-                    '$top': top,
-                    includeDeleted: includeDeleted,
-                    order: order
-                };
-                return [2 /*return*/, this.beginRequest({
-                        apiVersion: '5.1-preview.3',
-                        routeTemplate: '{project}/_apis/wit/workItems/{id}/comments',
-                        routeValues: {
-                            project: project,
-                            id: id
-                        },
-                        queryParams: queryValues
-                    })];
-            });
+        return this.beginRequest({
+            apiVersion: '5.1-preview.3',
+            routeTemplate: '{project}/_apis/wit/workItems/{id}/comments',
+            routeValues: {
+                project: project,
+                id: id
+            },
+            queryParams: {
+                '$expand': expand,
+                '$top': top,
+                includeDeleted: includeDeleted,
+                order: order
+            }
         });
     };
 
     // azure-devops-extension-api (at least until version 4.230.0) does not provide a wrapper for getting the comments versions.
     // So we define it ourselves. This corresponds to: https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/comments-versions/list?view=azure-devops-rest-5.1
     WorkItemTrackingRestClient.prototype.getCommentsVersions_Patched = function (id, project, commentId) {
-        // @ts-ignore
-        return __awaiter(this, void 0, void 0, function () {
-            var queryValues;
-            // @ts-ignore
-            return __generator(this, function (_a) {
-                queryValues = {};
-                return [2 /*return*/, this.beginRequest({
-                        apiVersion: '5.1-preview.1',
-                        routeTemplate: '{project}/_apis/wit/workItems/{id}/comments/{commentId}/versions',
-                        routeValues: {
-                            project: project,
-                            id: id,
-                            commentId: commentId
-                        },
-                        queryParams: queryValues
-                    })];
-            });
+        return this.beginRequest({
+            apiVersion: '5.1-preview.1',
+            routeTemplate: '{project}/_apis/wit/workItems/{id}/comments/{commentId}/versions',
+            routeValues: {
+                project: project,
+                id: id,
+                commentId: commentId
+            },
+            queryParams: {}
         });
     };
 
