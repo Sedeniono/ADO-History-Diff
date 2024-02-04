@@ -962,8 +962,8 @@ async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
 
 require(['azure-devops-extension-sdk', 
          'azure-devops-extension-api', 
-         'azure-devops-extension-api/WorkItemTracking/index.min', 
-         'node-htmldiff/js/htmldiff'
+         'azure-devops-extension-api/WorkItemTracking', 
+         'node-htmldiff'
         ], 
         // @ts-ignore
         function (adoSDK, adoAPI, workItemTracking, htmldiff) {
