@@ -26,12 +26,12 @@ jobs:
     - name: Install package dependencies
       run: npm ci
 
-    - name: Create vsix package
-      run: npx tfx-cli extension create
+    - name: Create release vsix package
+      run: npm run build
 
     - name: Upload vsix package
       uses: actions/upload-artifact@v4
       with:
-        name: vsix_zip
+        name: release_vsix_zip
         path: ./*.vsix
         if-no-files-found: error
