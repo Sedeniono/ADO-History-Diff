@@ -1,6 +1,8 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
+const LicenseWebpackPlugin = require('license-webpack-plugin').LicenseWebpackPlugin;
+
 
 module.exports = {
     entry: './src/HistoryDiffPageScript.js',
@@ -27,7 +29,14 @@ module.exports = {
                 useShortDoctype: true,
                 // Additional option compared to the default: Minimize css.
                 minifyCSS: true
-            }
+            },
+        }),
+        new LicenseWebpackPlugin({
+            outputFilename: 'dependencies.licenses.txt',
+            // https://github.com/xz64/license-webpack-plugin/issues/124
+            excludedPackageTest(packageName) {
+                return packageName === 'historydiff'
+            },
         }),
     ],
 };
