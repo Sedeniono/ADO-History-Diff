@@ -8,7 +8,7 @@
 
 
 # Introduction
-The history tab of work items in Azure DevOps (ADO) shows only the old and new values of each field, without highlighting the actual changes within the field.
+The standard history tab of work items in Azure DevOps (ADO) shows only the old and new values of each field, without highlighting the actual changes within the field.
 This makes spotting the difference very hard for fields that usually contain a lot of text; most prominently, the standard "Description" field and the comments.
 This extension adds a **new tab** to work items that shows the full history of every field, while computing an **appropriate diff** for each one.
 
@@ -36,15 +36,20 @@ Please see Microsoft's official installation instruction for extensions for [Azu
 For release notes, please visit the [releases page](https://github.com/Sedeniono/ADO-History-Diff/releases).
 
 
-**Further information:**  
-If you want to inspect the contents/source code of the vsix package, it can be extracted using tools such as [7-zip](https://www.7-zip.org/).
+**Building it yourself:**  
 If you want to build the vsix package yourself (also compare the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/extend/get-started/node)):
 * Get the source code from the [extension's GitHub repository](https://github.com/Sedeniono/ADO-History-Diff).
 * Execute `npm install -g tfx-cli` somewhere to install the extension packaging tool (TFX) globally.
 * In the code's main directory, execute:
   * `npm ci` to get the dependencies.
-  * `npx tfx-cli extension create` to create the vsix package.
+  * `npm run build` to create the vsix package (optimized release version) or `npm run build-dev` (non-optimized development version).
 
+
+**Inspecting the vsix package:**  
+If you want to inspect the contents of the vsix package e.g. for security purposes, it can be extracted using tools such as [7-zip](https://www.7-zip.org/).
+Note that the html and javascript files have been minimized and merged via [webpack](https://webpack.js.org/) to improve loading times.
+So I suggest to read the original source from the [GitHub repository](https://github.com/Sedeniono/ADO-History-Diff) instead.
+You can then build the vsix package yourself (`npm run build`, see above) and verify that the content of your manually produced vsix package is the same as in the released vsix package (from the marketplace or GitHub releases page).
 
 
 # Details
@@ -69,5 +74,4 @@ Note: Changing the theme in Azure DevOps (light to dark or vice versa) might not
 * Show only the context of a change in longer descriptions (optionally).
 * Localization
 * Instead of getting all changes of a work item, pages or an "infinite scrolling" mechanism would be nice. Getting all changes can be slow if the history is long.
-* Minimize the distributed files.
 * Support the test case steps field (`Microsoft.VSTS.TCM.Steps`).

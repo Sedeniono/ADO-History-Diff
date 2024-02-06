@@ -1,6 +1,6 @@
 # History Diff <!-- omit in toc -->
 
-The history tab of work items in Azure DevOps shows only the old and new values of each field, without highlighting the actual changes within the field.
+The standard history tab of work items in Azure DevOps shows only the old and new values of each field, without highlighting the actual changes within the field.
 This makes spotting the difference very hard for fields that usually contain a lot of text; most prominently, the standard "Description" field and the comments.
 This extension adds a **new tab** to work items that shows the full history of every field, while computing an **appropriate diff** for each one.
 
