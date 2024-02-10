@@ -9,5 +9,5 @@ Changes to the text are much easier to spot.
 ![Example comparison](images/HistoryComparison.png)
 
 
-**For documentation and source code, please head over to the [GitHub page](https://github.com/Sedeniono/ADO-History-Diff).**  
+**For installation instructions, documentation and source code, please head over to the [GitHub page](https://github.com/Sedeniono/ADO-History-Diff).**  
 Release notes and alternative vsix-package downloads for each version can be also found [on GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases).

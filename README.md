@@ -2,8 +2,16 @@
 
 
 - [Introduction](#introduction)
-- [Installation](#installation)
-- [Details](#details)
+- [Basic installation and requirements](#basic-installation-and-requirements)
+- [Details about the new "History" tab](#details-about-the-new-history-tab)
+- [On-premise installation (Azure DevOps Server)](#on-premise-installation-azure-devops-server)
+  - [Uploading the extension to Azure DevOps Server](#uploading-the-extension-to-azure-devops-server)
+  - [Enabling/configuring the history tab for work item types](#enablingconfiguring-the-history-tab-for-work-item-types)
+    - [Installation for the "Inheritance" process model](#installation-for-the-inheritance-process-model)
+    - [Installation for the "On-premises XML" process model](#installation-for-the-on-premises-xml-process-model)
+- [Cloud installation (Azure DevOps Services)](#cloud-installation-azure-devops-services)
+  - [Installation for the "Inheritance" process model](#installation-for-the-inheritance-process-model-1)
+  - [Installation for the "Hosted XML" process model](#installation-for-the-hosted-xml-process-model)
 - [Future ideas](#future-ideas)
 
 
@@ -14,15 +22,15 @@ This extension adds a **new tab** to work items that shows the full history of e
 
 The left image shows the default ADO history, while the right depicts the history as shown by the extension:
 Changes to the text are much easier to spot.
-![Example comparison](images/HistoryComparison.png)
+![Example comparison of the default ADO history with the new "History" tab](images/HistoryComparison.png)
 
 
-# Installation
+# Basic installation and requirements
 **Installation:**
 * Via the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff).
 * If you are using the on-premise Azure DevOps Server, you can also download the extension's vsix package from the [releases here on GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases) and install it directly without using the marketplace.
 
-Please see Microsoft's official installation instruction for extensions for [Azure DevOps Services](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops) and [Azure DevOps Server](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022).
+Please see the chapters further down for more details on how to install the extension.
 
 
 **Requirements:**
@@ -52,8 +60,8 @@ So I suggest to read the original source from the [GitHub repository](https://gi
 You can then build the vsix package yourself (`npm run build`, see above) and verify that the content of your manually produced vsix package is the same as in the released vsix package (from the marketplace or GitHub releases page).
 
 
-# Details
-The extension adds a new tab called "History" on the work item page.
+# Details about the new "History" tab
+The extension adds a new tab called "History" on the work item form.
 It does **not** modify the existing ADO history page because this is not possible with an extension to the best of my knowledge.
 
 When opening the new "History" tab, the extension gets all previous changes of the work item and the comment history via the Azure DevOps REST API.
@@ -67,6 +75,179 @@ The extension is aware of the dark mode theme and uses appropriate colors.
 Note: Changing the theme in Azure DevOps (light to dark or vice versa) might not immediately change all colors. The page should be reloaded after changing the theme.
 
 
+
+
+# On-premise installation (Azure DevOps Server)
+
+## Uploading the extension to Azure DevOps Server
+
+See the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022). In short, the steps are:
+
+1. Get the vsix package either from the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff) or the [releases here on GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases).
+Both host identical files.
+Then in the web interface of your Azure DevOps Server, go to `Collection Settings` &rarr; `Browse local extensions` (in the top right corner) &rarr; scroll down and select `Manage extensions` &rarr; then `Upload extension` (top right corner).
+
+2. Afterwards, on the `Browse local extensions` page, the `History Diff` extension should have appeared. Click on it &rarr; `Get it free` &rarr; select the target collection from the drop down list &rarr; hit `Install` &rarr; `Proceed to collection`.
+You need to do this once per collection.
+
+3. Simply uploading the extension is not enough if you use the "On-premises XML" process model. See next chapters for more information.
+
+
+
+## Enabling/configuring the history tab for work item types
+The next steps depend on the process model your ADO collection employs.
+There are [three process models](https://learn.microsoft.com/en-us/azure/devops/reference/customize-work?view=azure-devops-2022#collection-level-process-customization) in ADO: 
+* The "Inheritance" model, which allows to configure work items in the web frontend. This is the default for new collections in Azure DevOps Server. It is also the only choice in Azure DevOps Services (apart from organizations that used the data migration tool).
+* The "On-premises XML" model, which uses the [`witadmin` tool](https://learn.microsoft.com/en-us/azure/devops/reference/witadmin/witadmin-customize-and-manage-objects-for-tracking-work?view=azure-devops-2022) to perform the configuration. 
+* The "Hosted XML" model, which applies only to the cloud variation "Azure DevOps Services", but not the on-premise Azure DevOps Server. It is only available for organizations that used the data migration tool.
+
+
+If you are unsure which process model your on-premise installation for Azure DevOps Server employs:
+In the web frontend of ADO, go to `Collection Settings` &rarr; `Process`. 
+If you see the `Upload process template` button below the "All processes" and "Processes" texts, you are using the "On-premises XML" process model, and otherwise the "Inheritance" model.
+
+![Distinguishing the "On-premises XML" from the "Inheritance" process model](images/Installation/XML_vs_Inheritance.png)
+
+
+
+### Installation for the "Inheritance" process model
+Basically, there is nothing else to do.
+The new "History" tab should appear automatically on all existing and new work item types.
+
+The new tab can be changed per work item type in the work item type's configuration page: Go to `Collection Settings` &rarr; `Process` &rarr; click on the desired process &rarr; click on the desired work item type (e.g. "Task").
+In the opening page you can rename, move and hide the "History" tab.
+Note that changes are not allowed for the default processes ("Basic", "Agile", "Scrum", "CMMI"). 
+You [need to create and use an inherited process](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/manage-process?view=azure-devops-2022) for this.
+
+!["History" tab in the work item type configuration](images/Installation/InheritanceHistoryTab.png)
+
+
+### Installation for the "On-premises XML" process model
+The "on-premises XML" process model uses the [`witadmin` tool](https://learn.microsoft.com/en-us/azure/devops/reference/witadmin/witadmin-customize-and-manage-objects-for-tracking-work?view=azure-devops-2022).
+
+1. To run the tool, open a command prompt where Visual Studio is installed (or alternatively the developer command prompt for Visual Studio). For details, see [here](https://learn.microsoft.com/en-us/azure/devops/reference/witadmin/witadmin-import-export-manage-wits?view=azure-devops-2022#run-the-witadmin-command-line-tool).
+
+2. Export the definition of a work item type to XML:
+   ```
+   witadmin exportwitd /collection:collectionurl /p:project /n:typename /f:filename
+   ```
+    The `typename` is the name of the work item type, e.g. `Bug`.
+    The `filename` specifies the destination file; it should end with an `.xml` extension.
+    Run `witadmin exportwitd /help` for additional details.
+
+3. Open the created XML file in a text editor and search for "Work Item Extensions".
+It should look similar to this:
+   ```XML
+         ...
+         </Layout>
+         <WebLayout>
+           <!--**********************Work Item Extensions**********************
+   
+   Extension:
+   	Name: HistoryDiff
+   	Id: Sedenion.HistoryDiff
+   
+   	Page contribution:
+   		Id: Sedenion.HistoryDiff.historydiff
+   		Description: Tab to show the history of work item fields with proper diffs.
+   
+   Note: For more information on work item extensions use the following topic:
+   http://go.microsoft.com/fwlink/?LinkId=816513
+   -->
+           <SystemControls>
+             <Control Type="FieldControl" FieldName="System.Title" EmptyText="Enter title" />
+             ...
+   ```
+   If you have multiple extensions installed, the XML comment might list additional entries.
+   Below the XML comment, add
+   ```XML
+   <Extensions>
+     <Extension Id="Sedenion.HistoryDiff" />
+   </Extensions>
+   ```
+   It is important that you add it before the `<Page>` element further down.
+   For example:
+   ```XML
+   ...
+   <!--
+   ...
+   Note: For more information on work item extensions use the following topic:
+   http://go.microsoft.com/fwlink/?LinkId=816513
+   -->
+           <Extensions>
+               <Extension Id="Sedenion.HistoryDiff" />
+           </Extensions>
+           <SystemControls>
+             <Control Type="FieldControl" FieldName="System.Title" EmptyText="Enter title" />
+             ...
+   ```
+
+4. Import the modified XML file back into ADO:
+   ```
+   witadmin importwitd /collection:collectionurl /p:project /f:filename
+   ```
+   where `filename` is the path to the modified XML file.  
+   Afterwards, the new "History" tab shows up in work items of the type `typename` specified in the second step above.
+   You need to do this for every work item type which should show the new "History" tab.
+
+5. Optional: You can change the position and the name of the "History" tab by adding
+   ```XML
+   <PageContribution Id="Sedenion.HistoryDiff.historydiff" Label="New History Tab Name"  />
+   ```
+   in the XML file after the `<SystemControls>` node at the desired position.
+   In the following example, the new tab is inserted between "Page A" and "Page B" with the name "Awesome History":
+   ```XML
+   ...
+   <!--
+   ...
+   Note: For more information on work item extensions use the following topic:
+   http://go.microsoft.com/fwlink/?LinkId=816513
+   -->
+      <Extensions>
+          <Extension Id="Sedenion.HistoryDiff" />
+      </Extensions>
+      <SystemControls>
+        ...
+      </SystemControls>
+      <Page Label="Page A">
+        ...
+      </Page>
+      <PageContribution Id="Sedenion.HistoryDiff.historydiff" Label="Awesome History"  />
+      <Page Label="Page B" LayoutMode="FirstColumnWide">
+         ...
+      </Page>
+      ...
+   ```
+
+
+
+For further details on adding extensions to work item forms, see [here](https://learn.microsoft.com/en-us/azure/devops/extend/develop/configure-workitemform-extensions?view=azure-devops-2022).
+You might also want to look up the general manual for [on-premises XML process customization](https://learn.microsoft.com/en-us/azure/devops/reference/on-premises-xml-process-model?view=azure-devops-2022) and the [XML element reference](https://learn.microsoft.com/en-us/previous-versions/azure/devops/reference/xml/weblayout-xml-elements?view=tfs-2017) (search for "extension" there).
+
+
+
+# Cloud installation (Azure DevOps Services)
+
+## Installation for the "Inheritance" process model
+
+Most "Azure DevOps Services" instances should use the ["Inheritance" process model](https://learn.microsoft.com/en-us/azure/devops/reference/customize-work?view=azure-devops-2022#collection-level-process-customization).
+To install the extension in this case, go to the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff) and click "Get if free". You then need to select your organization and hit "Install".
+That should be everything you need to do.
+Please see [Microsoft's official installation instructions](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops) for more details.
+
+The new "History" tab can be configured as explained above in the chapter "Installation for the "Inheritance" process model".
+
+
+## Installation for the "Hosted XML" process model
+
+The ["Hosted XML" process model](https://learn.microsoft.com/en-us/azure/devops/reference/customize-work?view=azure-devops-2022#collection-level-process-customization) is only available for organizations that used the [data migration tool](https://www.microsoft.com/en-us/download/details.aspx?id=54274).
+The installation of the extension should be the same as for the "Inheritance" model, see above.
+However, you need to add the new "History" tab manually to the work item types by modifying their XML definition files.
+For information on how to do this, please refer to the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/hosted-xml-process-model?view=azure-devops) (especially on how to [modify](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/import-process/customize-process?view=azure-devops) and [import](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/import-process/import-process?view=azure-devops) processes).
+Apart from the import/export steps, the steps of modifying the actual XML file should be the same as for the "On-premises XML" process model outlined above.
+
+
+
 # Future ideas
 * Support more artifact links.
 * Fork and improve [htmldiff](https://www.npmjs.com/package/node-htmldiff) to highlight pure formatting changes.
@@ -75,3 +256,5 @@ Note: Changing the theme in Azure DevOps (light to dark or vice versa) might not
 * Localization
 * Instead of getting all changes of a work item, pages or an "infinite scrolling" mechanism would be nice. Getting all changes can be slow if the history is long.
 * Support the test case steps field (`Microsoft.VSTS.TCM.Steps`).
+
+
