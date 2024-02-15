@@ -54,7 +54,7 @@ If you want to build the vsix package yourself (also compare the [official Micro
 
 
 **Inspecting the vsix package:**  
-If you want to inspect the contents of the vsix package e.g. for security purposes, it can be extracted using tools such as [7-zip](https://www.7-zip.org/).
+If you want to inspect the contents of the vsix package e.g. for security auditing purposes, it can be extracted using tools such as [7-zip](https://www.7-zip.org/).
 Note that the html and javascript files have been minimized and merged via [webpack](https://webpack.js.org/) to improve loading times.
 So I suggest to read the original source from the [GitHub repository](https://github.com/Sedeniono/ADO-History-Diff) instead.
 You can then build the vsix package yourself (`npm run build`, see above) and verify that the content of your manually produced vsix package is the same as in the released vsix package (from the marketplace or GitHub releases page).
@@ -81,16 +81,19 @@ Note: Changing the theme in Azure DevOps (light to dark or vice versa) might not
 
 ## Uploading the extension to Azure DevOps Server
 
-See the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022). In short, the steps are:
+See the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022). In short, you have to options:
+1. Option 1: Direct installation from the marketplace.  
+   In the web interface of your Azure DevOps Server, go to `Collection Settings` &rarr; `Extensions` &rarr; `Browse marketplace` (in the top right corner) &rarr; search for "Sedenion.HistoryDiff" to find the extension and click on it &rarr; `Get it free` &rarr; select the target collection from the drop down list &rarr; hit `Install` &rarr; `Proceed to collection`.
+2. Option 2: Manual upload of the vsix package.
+   1. Download the vsix package either from the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff) or the [releases here on GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases).
+   Both host identical files.
+   Then in the web interface of your Azure DevOps Server, go to `Collection Settings` &rarr; `Extensions` &rarr; `Browse local extensions` (in the top right corner) &rarr; scroll down and select `Manage extensions` &rarr; then `Upload extension` (top right corner).
 
-1. Get the vsix package either from the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff) or the [releases here on GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases).
-Both host identical files.
-Then in the web interface of your Azure DevOps Server, go to `Collection Settings` &rarr; `Browse local extensions` (in the top right corner) &rarr; scroll down and select `Manage extensions` &rarr; then `Upload extension` (top right corner).
-
-2. Afterwards, on the `Browse local extensions` page, the `History Diff` extension should have appeared. Click on it &rarr; `Get it free` &rarr; select the target collection from the drop down list &rarr; hit `Install` &rarr; `Proceed to collection`.
+   2. Afterwards, on the `Browse local extensions` page, the `History Diff` extension should have appeared. Click on it &rarr; `Get it free` &rarr; select the target collection from the drop down list &rarr; hit `Install` &rarr; `Proceed to collection`.
+   
+   
 You need to do this once per collection.
-
-3. Simply uploading the extension is not enough if you use the "On-premises XML" process model. See next chapters for more information.
+Also, simply uploading the extension is not enough if you use the "On-premises XML" process model. See the next chapters for more information.
 
 
 
@@ -250,7 +253,7 @@ Apart from the import/export steps, the steps of modifying the actual XML file s
 
 # Future ideas
 * Support more artifact links.
-* Fork and improve [htmldiff](https://www.npmjs.com/package/node-htmldiff) to highlight pure formatting changes.
+* Show pure formatting changes. Maybe fork and try to improve [htmldiff](https://www.npmjs.com/package/node-htmldiff). Or possibly better, use Wikipedia's [VisualDiff](https://www.mediawiki.org/wiki/Special:MyLanguage/visual_diffs) from the [VisualEditor](https://github.com/wikimedia/mediawiki-extensions-VisualEditor) (but has more dependencies). Or port [DaisyDiff](https://github.com/DaisyDiff/DaisyDiff).
 * Once [markdown is available in Azure DevOps work items](https://developercommunity.visualstudio.com/t/add-markdown-support-in-discussions/365826), support it.
 * Show only the context of a change in longer descriptions (optionally).
 * Localization
