@@ -388,19 +388,21 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
     }
 
     // TODO:
-    // - Resolve project and repository ids for better display?
+    // - Resolve project and repository ids for better display? I.e. in the history, show the project and repository names?
     // - Support all other artifact link types.
     // - Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
+    // - TFS code references? (Compare e.g. constructLinkToContentFromRouteId())
 
     const [, artifactTool, artifactType, artifactId] = matches;
     if (artifactTool === 'Git') {
+        // Example: vstfs:///Git/Commit/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2054d8fcd16469d4398b2c73d9da828aaed98e41
         if (artifactType === 'Commit') {
             const details = artifactId.split('%2F');
             if (details.length !== 3) {
                 return undefined;
             }
 
-            // Compare the 'VersionControl/Scripts/CommitArtifact.js' file in the ADO Server installation.
+            // Compare 'VersionControl/Scripts/CommitArtifact.js' and 'wit-linked-work-dropdown-content\Util\Artifact.js' in the ADO Server installation.
             const [projectGuid, repositoryId, commitId] = details;
 
             /*
@@ -414,13 +416,46 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
                 ],
             */
             const url = await gLocationService.routeUrl(
-                "ms.vss-code-web.commit-route", 
+                'ms.vss-code-web.commit-route',
                 {
                     project: projectGuid,
                     'vc.GitRepositoryName': repositoryId,
                     parameters: commitId
                 });
             return [commitId, url];
+        }
+        // Example: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
+        else if (artifactType === 'Ref') {
+            const details = artifactId.split('%2F');
+            if (details.length !== 3) {
+                return undefined;
+            }
+
+            // Compare 'wit-linked-work-dropdown-content\Util\Artifact.js' as well as 
+            // constructLinkToContentFromRouteId() in 'Search\Scenarios\Shared\Utils.js' in the ADO Server installation.
+            // Git branches are prefixed with 'GB' (I guess it stands for 'Git Branch'?) (TFS branches are prefixed with 'T').
+            const [projectGuid, repositoryId, branchNameWithGB] = details;
+            if (branchNameWithGB.indexOf('GB') !== 0) {
+                // TODO: Is 'Git/Ref' used only for branches, or also for other things?
+                return undefined;
+            }
+            const branchName = branchNameWithGB.substring(2);
+
+            /*
+                "routeTemplates": [
+                    "{project}/{team}/_git/{vc.GitRepositoryName}",
+                    "{project}/_git/{vc.GitRepositoryName}",
+                    "_git/{project}"
+                ],
+            */
+            const url = await gLocationService.routeUrl(
+                'ms.vss-code-web.files-route-git',
+                {
+                    project: projectGuid,
+                    'vc.GitRepositoryName': repositoryId,
+                    version: branchNameWithGB
+                });
+            return [branchName, url];
         }
     }
 
