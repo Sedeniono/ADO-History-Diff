@@ -12,6 +12,9 @@ var gWorkItemTracking;
 // WorkItemTrackingRestClient: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient
 var gWorkItemRESTClient;
 
+// ILocationService: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/ilocationservice
+var gLocationService;
+
 // An enum that holds the known field types. E.g. gFieldTypeEnum.Html === 4.
 // It is basically https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/fieldtype,
 // except that this documentation is incorrect (it shows the wrong numerical ids). (Apparently, the enum 'FieldType'
@@ -109,7 +112,7 @@ function FormatIdentityForFieldDiff(identity)
 }
 
 
-function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap) 
+async function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap) 
 {
     let allUpdateTables = [];
 
@@ -120,7 +123,7 @@ function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap
             continue;
         }
 
-        const tableInfosOfUpdate = GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate);
+        const tableInfosOfUpdate = await GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate);
         // Note: Table of length 0 is allowed, because we want to merge comment updates with it later on. That way we can display the correct update id.
         if (tableInfosOfUpdate) {
             allUpdateTables.push(tableInfosOfUpdate);
@@ -149,7 +152,7 @@ const hiddenFields = [
 ];
 
 
-function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
+async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
 {
     // The work item revision 'revUpdate.rev' seems to get incremented only when a field changes. The 'id' gets 
     // incremented also when a relation is changed.
@@ -167,7 +170,7 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
             if (hiddenFields.indexOf(fieldReferenceName) >= 0 
                 // 'AreaLevel1', 'AreaLevel2', etc. are sufficiently represented by the 'System.AreaPath' field.
                 || fieldReferenceName.indexOf('System.AreaLevel') >= 0
-                // 'IterationLevel1', 'IterationLevel2', etc. are sufficiently represented by the 'System.AreaPath' field.
+                // 'IterationLevel1', 'IterationLevel2', etc. are sufficiently represented by the 'System.IterationPath' field.
                 || fieldReferenceName.indexOf('System.IterationLevel') >= 0) {
                 continue;
             }
@@ -204,7 +207,7 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
     if (revUpdate.relations) {
         if (revUpdate.relations.added) {
             for (const relation of revUpdate.relations.added) {
-                const changeStrings = GetUserFriendlyStringsOfRelationChange(relation);
+                const changeStrings = await GetUserFriendlyStringsForRelationChange(relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
                     // Note: The comment text is the *latest* version of the comment, i.e. not the comment text with
@@ -220,7 +223,7 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
         }
         if (revUpdate.relations.removed) {
             for (const relation of revUpdate.relations.removed) {
-                const changeStrings = GetUserFriendlyStringsOfRelationChange(relation);
+                const changeStrings = await GetUserFriendlyStringsForRelationChange(relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
                     tableRows.push([`Link removed: ${friendlyName}`, `<del class="diffCls">${change}</del>`]);
@@ -234,7 +237,7 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
         // array anyway. Also see: https://developercommunity.visualstudio.com/t/unable-to-update-a-hyperlink-in-a-work-item-via-re/1037054
         if (revUpdate.relations.updated) {
             for (const relation of revUpdate.relations.updated) {
-                const changeStrings = GetUserFriendlyStringsOfRelationChange(relation);
+                const changeStrings = await GetUserFriendlyStringsForRelationChange(relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
                     tableRows.push([`Link updated: ${friendlyName}`, `<ins class="diffCls">${change}</ins>`]);
@@ -254,7 +257,7 @@ function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
 
 // Returns [friendlyName, value], where 'friendlyName' is a user displayable name of the given relation, and
 // the 'value' is a string containing the displayable value of the relation.
-function GetUserFriendlyStringsOfRelationChange(relation)
+async function GetUserFriendlyStringsForRelationChange(relation)
 {
     if (!relation) {
         return undefined;
@@ -270,16 +273,14 @@ function GetUserFriendlyStringsOfRelationChange(relation)
     }
     else if (relType === 'ArtifactLink') {
         // Link to some repository artifact (commit, pull request, branch, etc.), build artifact, wiki page, etc.
-
         const friendlyName = relation.attributes?.name;
-
-        // TODO: Need to figure out how to convert the relation.url to a user friendly link. I think we need to parse it manually.
-        // See e.g. https://developercommunity.visualstudio.com/t/artifact-uri-format-in-external-link-of-work-items/964448
-        // The relation.url is e.g.: 
-        //  - Repo link: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
-        //  - Build link: vstfs:///Build/Build/1
-        //  - Wiki page: vstfs:///Wiki/WikiPage/2d63f741-0ba0-4bc6-b730-896745fab2c0%2F201005d4-3f97-4766-9b82-b69c89972e64%2FFirst%20wiki%20page
-        const value = '(Showing the change is not supported.)';
+        const data = await TryGetHTMLLinkNameAndUrlForArtifactLink(relation.url);
+        if (!data) {
+            // Unknown or broken artifact link: Simply display the raw url.
+            return [friendlyName, EscapeHtml(relation.url)];
+        }
+        const [displayText, url] = data;
+        const value = `<a href="${encodeURI(url)}" target="_parent">${EscapeHtml(displayText)}</a>`; 
         return [friendlyName, value];
     }
     else if (relType === 'AttachedFile') {
@@ -318,6 +319,113 @@ function GetUserFriendlyStringsOfRelationChange(relation)
     
     // TODO: Haven't tested github links, remote work links types (links between organizations), links to storyboards, links to tests.
     return ['(Unsupported link type)', '(Showing the change is not supported.)'];
+}
+
+
+async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
+{
+    // Converting the artifact link to an actually usable url that the user can click is quite troublesome, because
+    // the whole thing is almost entirely undocumented.
+    //
+    // The artifact link has the (undocumented) format:
+    //      vstfs:///{artifactTool}/{artifactType}/{artifactId}
+    // Also see https://developercommunity.visualstudio.com/t/artifact-uri-format-in-external-link-of-work-items/964448
+    // or https://stackoverflow.com/a/65623491.
+    // There is no official API to extract the 3 components. Furthermore, the artifactId can consist of 'sub-components'
+    // that are usually separated by '%2F' (which is just the character '/' encoded).
+    // The meaning of each component and sub-component is undocumented.
+    // For completeness/documentation purposes: The standard ADO history splits the vstfs link (but no the artifactId) in 
+    // a function called decodeUri(), which is called from
+    // LinkMapper.mapLink() -> LinkMapper._mapExternalLink() -> createGitHubArtifactFromExternalLink() -> decodeUri()
+    // (despite the 'GitHub', this seems to be called also for non-GitHub artifact links).
+    //
+    // Examples:
+    //  - Repo link: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
+    //  - Commit link: vstfs:///Git/Commit/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2054d8fcd16469d4398b2c73d9da828aaed98e41
+    //  - Build link: vstfs:///Build/Build/1
+    //  - Wiki page: vstfs:///Wiki/WikiPage/2d63f741-0ba0-4bc6-b730-896745fab2c0%2F201005d4-3f97-4766-9b82-b69c89972e64%2FFirst%20wiki%20page
+    //
+    //
+    // After having split the artifact link, I guess the intended way to retrieve a usable URL from its components is to use the 
+    // official API ILocationService.routeUrl():
+    // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/ilocationservice#azure-devops-extension-api-ilocationservice-routeurl
+    // At least this function does exactly what we want: It returns a usable URL, assuming that correct parameters were provided. 
+    // Hence my guess that this is the intended way. However, allowed values for its parameters are not documented anywhere.
+    // From my understanding:
+    //   - The first parameter 'routeId' is some magic string/identifier that indicates the type of the URL to construct, i.e. it identifies
+    //     the route template to use. A route template is a string such as "{project}/_git/{vc.GitRepositoryName}/commit/{parameters}".
+    //     To be more precise, a 'routeId' is associated with multiple route templates. ADO apparently figures out which concrete
+    //     route template to use from the given 'routeValues'. I guess this is the mechanism of getBestRouteMatch():
+    //     https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/#azure-devops-extension-api-getbestroutematch
+    //   - The second parameter 'routeValues' is an object, where the fields correspond to placeholders in the route template.
+    //
+    // Possible values for the 'routeId' and 'routeValues' can be found by searching through the source files in the Azure DevOps Server
+    // installation directory, especially in the 'extension.vsomanifest' files.
+    // The routeUrl() function, upon its first call, issues a REST request to get the route template strings associated with the 'routeId'.
+    // Subsequent calls then use the cached route template.
+    //
+    // For documentation purposes: The default ADO history constructs the usable URL in TfsContext.getPublicActionUrl() and 
+    // TfsContext.getActionUrl().
+    //
+    //
+    // As an alternative to routeUrl(), we could also construct the URL ourselves. This would have the advantage of not requiring the
+    // undocumented values for 'routeId' and 'routeValues', and also would bypass the additional REST request. On the downside, the format
+    // of the URL itself is also not really documented. We also would need to find out the host name ourselves; this is actually not that
+    // straightforward because we run in an iframe, and the behavior is apparently different in ADO Server and ADO Services. We also would
+    // need to get the collection (ADO Server) or organization (ADO Services) in the URL ourselves. To this end, note that the gAdoSDK does
+    // provide some interfaces to get the data. But in my tests, they were cumbersome to use (only available in the gAdoSDK.ready() promise) 
+    // or broken (not even available in the gAdoSDK.ready() function, although I think they should be, or did not have the documented fields). 
+    // Also, routeUrl() does seem like the intended way to construct the URL (except that Microsoft has forgotten to document it properly). 
+    // Therefore, using routeUrl() seems like the lesser evil.
+
+    if (typeof artifactLink !== 'string') {
+        return undefined;
+    }
+
+    const matches = artifactLink.match(/vstfs:\/\/\/(.*)\/(.*)\/(.*)/);
+    if (matches?.length !== 4) {
+        return undefined;
+    }
+
+    // TODO:
+    // - Resolve project and repository ids for better display?
+    // - Support all other artifact link types.
+    // - Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
+
+    const [, artifactTool, artifactType, artifactId] = matches;
+    if (artifactTool === 'Git') {
+        if (artifactType === 'Commit') {
+            const details = artifactId.split('%2F');
+            if (details.length !== 3) {
+                return undefined;
+            }
+
+            // Compare the 'VersionControl/Scripts/CommitArtifact.js' file in the ADO Server installation.
+            const [projectGuid, repositoryId, commitId] = details;
+
+            /*
+                "routeTemplates": [
+                    "{project}/{team}/_git/{vc.GitRepositoryName}/commit/{parameters}/{reviewMode}",
+                    "{project}/{team}/_git/{vc.GitRepositoryName}/commit/{parameters}",
+                    "{project}/_git/{vc.GitRepositoryName}/commit/{parameters}/{reviewMode}",
+                    "{project}/_git/{vc.GitRepositoryName}/commit/{parameters}",
+                    "_git/{project}/commit/{parameters}/{reviewMode}",
+                    "_git/{project}/commit/{parameters}"
+                ],
+            */
+            const url = await gLocationService.routeUrl(
+                "ms.vss-code-web.commit-route", 
+                {
+                    project: projectGuid,
+                    'vc.GitRepositoryName': repositoryId,
+                    parameters: commitId
+                });
+            return [commitId, url];
+        }
+    }
+
+    // Unknown artifact link.
+    return undefined;
 }
 
 
@@ -603,9 +711,9 @@ async function GetCommentsVersionsRESTRequest(id, project, commentId)
 }
 
 
-function GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap)
+async function GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap)
 {
-    const tablesForRevisionUpdates = GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap);
+    const tablesForRevisionUpdates = await GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap);
     const tablesForCommentUpdates = GetTableInfosForEachComment(comments);
     const allUpdateTables = tablesForRevisionUpdates.concat(tablesForCommentUpdates);
     SortAndMergeAllTableInfosInplace(allUpdateTables);
@@ -714,7 +822,7 @@ async function LoadAndSetDiffInHTMLDocument()
 
     // workItemFormService = IWorkItemFormService 
     // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemformservice
-    // Note stored as global variable during initialization because the instance is tied to a certain work item,
+    // Not stored as global variable during initialization because the instance is tied to a certain work item,
     // and when the 'onLoaded' event is called, we might have switched to another work item. So need to get it again.
     const [workItemFormService, projectName] = await Promise.all([
         gAdoSDK.getService(gWorkItemFormServiceId), 
@@ -731,7 +839,7 @@ async function LoadAndSetDiffInHTMLDocument()
         GetCommentsWithHistory(workItemId, projectName)
     ]);
 
-    const allUpdateTables = GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap);
+    const allUpdateTables = await GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap);
     const htmlString = CreateHTMLForAllUpdates(allUpdateTables);
     GetHtmlDisplayField().innerHTML = htmlString;
 }
@@ -893,7 +1001,7 @@ function CreateWorkItemPageEvents()
 // encountered. For example, if there are two successive bugs, the user shows the history diff on the first bug,
 // then moves on to the next bug, ADO will show immediately our history diff tab, but this function is not called
 // again. Instead, the 'onUnloaded' and 'onLoaded' events are called (see CreateWorkItemPageEvents()).
-async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
+async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, adoCommonServices, htmldiff)
 {
     // Called by the ADO API after the client received and applied the ADO theme. Also called when the user changes the theme
     // while our extension is already loaded. The event doesn't seem to be documented, but it can be seen in the source:
@@ -922,7 +1030,9 @@ async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
     gHtmlDiff = htmldiff;
     gWorkItemTracking = workItemTracking;
     gFieldTypeEnum = workItemTracking.FieldType;
-    gWorkItemFormServiceId = workItemTracking.WorkItemTrackingServiceIds['WorkItemFormService'];
+    gWorkItemFormServiceId = workItemTracking.WorkItemTrackingServiceIds.WorkItemFormService;
+
+    gLocationService = await gAdoSDK.getService(adoCommonServices.CommonServiceIds.LocationService);
     
     // getClient(): https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/#azure-devops-extension-api-getclient
     // Gives a WorkItemTrackingRestClient: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient
@@ -939,11 +1049,12 @@ async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff)
 
 require(['azure-devops-extension-sdk', 
          'azure-devops-extension-api', 
-         'azure-devops-extension-api/WorkItemTracking', 
+         'azure-devops-extension-api/WorkItemTracking',
+         'azure-devops-extension-api/Common/CommonServices',
          'node-htmldiff'
         ], 
         // @ts-ignore
-        function (adoSDK, adoAPI, workItemTracking, htmldiff) {
-            InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, htmldiff);
+        function (adoSDK, adoAPI, workItemTracking, adoCommonServices, htmldiff) {
+            InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, adoCommonServices, htmldiff);
         }
 );
