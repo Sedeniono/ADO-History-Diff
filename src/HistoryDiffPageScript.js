@@ -279,8 +279,11 @@ async function GetUserFriendlyStringsForRelationChange(relation)
             // Unknown or broken artifact link: Simply display the raw url.
             return [friendlyName, EscapeHtml(relation.url)];
         }
-        const [displayText, url] = data;
-        const value = `<a href="${encodeURI(url)}" target="_parent">${EscapeHtml(displayText)}</a>`; 
+        const [displayText, url, additionalInfo] = data;
+        let value = `<a href="${encodeURI(url)}" target="_parent">${EscapeHtml(displayText)}</a>`; 
+        if (additionalInfo) {
+            value = `${additionalInfo}: ${value}`;
+        }
         return [friendlyName, value];
     }
     else if (relType === 'AttachedFile') {
@@ -422,24 +425,44 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
                     'vc.GitRepositoryName': repositoryId,
                     parameters: commitId
                 });
-            return [commitId, url];
+            return [commitId, url, ''];
         }
-        // Example: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
+        // Example branch: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
+        // Example tag: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGTSomeTagInRepo
+        // Example commit: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGC055a2cd8575bf236145656b4fc8559981cc690ba
         else if (artifactType === 'Ref') {
             const details = artifactId.split('%2F');
             if (details.length !== 3) {
                 return undefined;
             }
 
-            // Compare 'wit-linked-work-dropdown-content\Util\Artifact.js' as well as 
-            // constructLinkToContentFromRouteId() in 'Search\Scenarios\Shared\Utils.js' in the ADO Server installation.
-            // Git branches are prefixed with 'GB' (I guess it stands for 'Git Branch'?) (TFS branches are prefixed with 'T').
-            const [projectGuid, repositoryId, branchNameWithGB] = details;
-            if (branchNameWithGB.indexOf('GB') !== 0) {
-                // TODO: Is 'Git/Ref' used only for branches, or also for other things?
+            // Compare 'wit-linked-work-dropdown-content\Util\Artifact.js', constructLinkToContentFromRouteId() in 'Search\Scenarios\Shared\Utils.js' 
+            // and 'common-content\Utils\Ref.js' in the ADO Server installation.
+            // Git branches are prefixed with 'GB', git tags with 'GT', and git commits with 'GC'.
+            const [projectGuid, repositoryId, refNameWithPrefix] = details;
+            let refType;
+            if (refNameWithPrefix.indexOf('GB') === 0) {
+                refType = 'Branch';
+            }
+            else if (refNameWithPrefix.indexOf('GT') === 0) {
+                refType = 'Tag';
+            }
+            else if (refNameWithPrefix.indexOf('GC') === 0) {
+                // The ADO source files show that 'GC' is possible. However, I don't think that this type can be created via the ADO UI.
+                // The UI creates a vstfs:///Git/Commit/... url when linking to commits, not a vstfs:///Git/Ref/ url.
+                // But it is possible via the REST API (https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/update?view=azure-devops-server-rest-6.0&tabs=HTTP#add-a-link).
+                // The URL we create below does work correctly for commits. However, the 'links' tab in ADO doesn't show such links. Weird. Maybe 
+                // a leftover from earlier ADO versions?
+                refType = 'Commit';
+            }
+            else {
+                // Note: The REST API (https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/update?view=azure-devops-server-rest-6.0&tabs=HTTP#add-a-link)
+                // actually allows to create invalid links, e.g. vstfs:///Git/Ref/SomethingInvalid
+                // However, the 'links' tab in ADO doesn't show them.
                 return undefined;
             }
-            const branchName = branchNameWithGB.substring(2);
+
+            const refName = refNameWithPrefix.substring(2);
 
             /*
                 "routeTemplates": [
@@ -453,9 +476,10 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
                 {
                     project: projectGuid,
                     'vc.GitRepositoryName': repositoryId,
-                    version: branchNameWithGB
+                    // The branch/tag/commit name must be appended as '?version=refNameWithPrefix' to the URL.
+                    version: refNameWithPrefix
                 });
-            return [branchName, url];
+            return [refName, url, refType];
         }
     }
 
