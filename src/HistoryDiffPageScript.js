@@ -112,7 +112,7 @@ function FormatIdentityForFieldDiff(identity)
 }
 
 
-async function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap) 
+async function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap, currentProjectName) 
 {
     let allUpdateTables = [];
 
@@ -123,7 +123,7 @@ async function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropert
             continue;
         }
 
-        const tableInfosOfUpdate = await GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate);
+        const tableInfosOfUpdate = await GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, currentProjectName, revUpdate);
         // Note: Table of length 0 is allowed, because we want to merge comment updates with it later on. That way we can display the correct update id.
         if (tableInfosOfUpdate) {
             allUpdateTables.push(tableInfosOfUpdate);
@@ -152,7 +152,7 @@ const hiddenFields = [
 ];
 
 
-async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpdate)
+async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, currentProjectName, revUpdate)
 {
     // The work item revision 'revUpdate.rev' seems to get incremented only when a field changes. The 'id' gets 
     // incremented also when a relation is changed.
@@ -207,7 +207,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpda
     if (revUpdate.relations) {
         if (revUpdate.relations.added) {
             for (const relation of revUpdate.relations.added) {
-                const changeStrings = await GetUserFriendlyStringsForRelationChange(relation);
+                const changeStrings = await GetUserFriendlyStringsForRelationChange(currentProjectName, relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
                     // Note: The comment text is the *latest* version of the comment, i.e. not the comment text with
@@ -223,7 +223,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpda
         }
         if (revUpdate.relations.removed) {
             for (const relation of revUpdate.relations.removed) {
-                const changeStrings = await GetUserFriendlyStringsForRelationChange(relation);
+                const changeStrings = await GetUserFriendlyStringsForRelationChange(currentProjectName, relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
                     tableRows.push([`Link removed: ${friendlyName}`, `<del class="diffCls">${change}</del>`]);
@@ -237,7 +237,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpda
         // array anyway. Also see: https://developercommunity.visualstudio.com/t/unable-to-update-a-hyperlink-in-a-work-item-via-re/1037054
         if (revUpdate.relations.updated) {
             for (const relation of revUpdate.relations.updated) {
-                const changeStrings = await GetUserFriendlyStringsForRelationChange(relation);
+                const changeStrings = await GetUserFriendlyStringsForRelationChange(currentProjectName, relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
                     tableRows.push([`Link updated: ${friendlyName}`, `<ins class="diffCls">${change}</ins>`]);
@@ -257,7 +257,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, revUpda
 
 // Returns [friendlyName, value], where 'friendlyName' is a user displayable name of the given relation, and
 // the 'value' is a string containing the displayable value of the relation.
-async function GetUserFriendlyStringsForRelationChange(relation)
+async function GetUserFriendlyStringsForRelationChange(currentProjectName, relation)
 {
     if (!relation) {
         return undefined;
@@ -274,13 +274,13 @@ async function GetUserFriendlyStringsForRelationChange(relation)
     else if (relType === 'ArtifactLink') {
         // Link to some repository artifact (commit, pull request, branch, etc.), build artifact, wiki page, etc.
         const friendlyName = relation.attributes?.name;
-        const data = await TryGetHTMLLinkNameAndUrlForArtifactLink(relation.url);
+        const data = await TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, relation.url);
         if (!data) {
             // Unknown or broken artifact link: Simply display the raw url.
             return [friendlyName, EscapeHtml(relation.url)];
         }
         const [displayText, url, additionalInfo] = data;
-        let value = `<a href="${encodeURI(url)}" target="_parent">${EscapeHtml(displayText)}</a>`; 
+        let value = `<a href="${url}" target="_parent">${EscapeHtml(displayText)}</a>`; 
         if (additionalInfo) {
             value = `${additionalInfo}: ${value}`;
         }
@@ -325,7 +325,7 @@ async function GetUserFriendlyStringsForRelationChange(relation)
 }
 
 
-async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
+async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artifactLink)
 {
     // Converting the artifact link to an actually usable url that the user can click is quite troublesome, because
     // the whole thing is almost entirely undocumented.
@@ -396,6 +396,8 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
     // - Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
     // - TFS code references? (Compare e.g. constructLinkToContentFromRouteId())
     // - Check all places whether EscapeHtml() or encode...() is missing.
+    // - Split into multiple functions, or a map or so.
+    // - Wrap in try...catch?
 
     const [, artifactTool, artifactType, artifactId] = matches;
     if (artifactTool === 'Git') {
@@ -507,6 +509,27 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
                     parameters: pullRequestId
                 });
             return [pullRequestId, url, ''];
+        }
+    }
+    // TFVC (Team Foundation Version Control) links
+    else if (artifactTool === 'VersionControl') {
+        // Example: vstfs:///VersionControl/Changeset/3
+        if (artifactType === 'Changeset') {
+            /*
+                "routeTemplates": [
+                    "{project}/{team}/_versionControl/changeset/{parameters}/{reviewMode}",
+                    "{project}/{team}/_versionControl/changeset/{parameters}",
+                    "{project}/_versionControl/changeset/{parameters}/{reviewMode}",
+                    "{project}/_versionControl/changeset/{parameters}"
+                ],
+            */
+            const url = await gLocationService.routeUrl(
+                'ms.vss-code-web.changeset-route',
+                {
+                    project: currentProjectName,
+                    parameters: artifactId
+                });
+            return [artifactId, url, ''];   
         }
     }
 
@@ -797,9 +820,9 @@ async function GetCommentsVersionsRESTRequest(id, project, commentId)
 }
 
 
-async function GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap)
+async function GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap, currentProjectName)
 {
-    const tablesForRevisionUpdates = await GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap);
+    const tablesForRevisionUpdates = await GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap, currentProjectName);
     const tablesForCommentUpdates = GetTableInfosForEachComment(comments);
     const allUpdateTables = tablesForRevisionUpdates.concat(tablesForCommentUpdates);
     SortAndMergeAllTableInfosInplace(allUpdateTables);
@@ -925,7 +948,7 @@ async function LoadAndSetDiffInHTMLDocument()
         GetCommentsWithHistory(workItemId, projectName)
     ]);
 
-    const allUpdateTables = await GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap);
+    const allUpdateTables = await GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap, projectName);
     const htmlString = CreateHTMLForAllUpdates(allUpdateTables);
     GetHtmlDisplayField().innerHTML = htmlString;
 }
