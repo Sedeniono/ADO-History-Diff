@@ -363,7 +363,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
     //   - The second parameter 'routeValues' is an object, where the fields correspond to placeholders in the route template.
     //
     // Possible values for the 'routeId' and 'routeValues' can be found by searching through the source files in the Azure DevOps Server
-    // installation directory, especially in the 'extension.vsomanifest' files.
+    // installation directory, especially in the 'extension.vsomanifest' and ms.vss-code-web\common-content\Navigation.js files.
     // The routeUrl() function, upon its first call, issues a REST request to get the route template strings associated with the 'routeId'.
     // Subsequent calls then use the cached route template.
     //
@@ -395,6 +395,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
     // - Support all other artifact link types.
     // - Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
     // - TFS code references? (Compare e.g. constructLinkToContentFromRouteId())
+    // - Check all places whether EscapeHtml() or encode...() is missing.
 
     const [, artifactTool, artifactType, artifactId] = matches;
     if (artifactTool === 'Git') {
@@ -480,6 +481,32 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(artifactLink)
                     version: refNameWithPrefix
                 });
             return [refName, url, refType];
+        }
+        // Example: vstfs:///Git/PullRequestId/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2
+        else if (artifactType === 'PullRequestId') {
+            const details = artifactId.split('%2F');
+            if (details.length !== 3) {
+                return undefined;
+            }
+
+            // See 'VersionControl\Scripts\PullRequestArtifact.js' in the ADO Server installation.
+            const [projectGuid, repositoryId, pullRequestId] = details;
+
+            /*
+                "routeTemplates": [
+                    "{project}/{team}/_git/{vc.GitRepositoryName}/pullrequest/{parameters}",
+                    "{project}/_git/{vc.GitRepositoryName}/pullrequest/{parameters}",
+                    "_git/{project}/pullrequest/{parameters}"
+                ],
+            */
+            const url = await gLocationService.routeUrl(
+                'ms.vss-code-web.pull-request-review-route',
+                {
+                    project: projectGuid,
+                    'vc.GitRepositoryName': repositoryId,
+                    parameters: pullRequestId
+                });
+            return [pullRequestId, url, ''];
         }
     }
 
