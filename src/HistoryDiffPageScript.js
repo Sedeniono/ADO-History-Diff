@@ -515,6 +515,8 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     else if (artifactTool === 'VersionControl') {
         // Example: vstfs:///VersionControl/Changeset/3
         if (artifactType === 'Changeset') {
+            const changesetID = artifactId;
+
             /*
                 "routeTemplates": [
                     "{project}/{team}/_versionControl/changeset/{parameters}/{reviewMode}",
@@ -526,10 +528,23 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
             const url = await gLocationService.routeUrl(
                 'ms.vss-code-web.changeset-route',
                 {
+                    // The ADO UI of work items apparently does not allow to link to TFVC changesets in other projects.
+                    // However, when creating a changeset in another project, one is allowed to link it to a work item
+                    // in another project. Hence, ADO does know links to changesets in other projects. Problem: The
+                    // vstfs link does not contain the project containing the changeset. Changeset numbers seem, however,
+                    // to be unique across all projects/repos. So the project is in principle not necessary. The ADO server
+                    // source files even show that there is another routeId ('collection-changeset-route') and with a route 
+                    // template '_versionControl/changeset/{parameters}' without the project . However, the resulting URL is
+                    // invalid. So, to be precise, we would need to use some ADO API to query the project containing the given
+                    // changeset ID. But all of this seems quite troublesome and not worth the effort: First of all,
+                    // specifying an incorrect project here still results in a valid URL to the changeset (but ADO displays
+                    // the changeset then in the context of the given project). Second, who is still using TFVC? Third,
+                    // the few people who use TFVC will probably not use links to TFVC repos in other projects.
+                    // => Simply use the current work item's project.
                     project: currentProjectName,
-                    parameters: artifactId
+                    parameters: changesetID
                 });
-            return [artifactId, url, ''];
+            return [changesetID, url, ''];
         }
     }
 
