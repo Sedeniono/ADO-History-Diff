@@ -282,7 +282,7 @@ async function GetUserFriendlyStringsForRelationChange(currentProjectName, relat
         const [displayText, url, additionalInfo] = data;
         let value = `<a href="${url}" target="_parent">${EscapeHtml(displayText)}</a>`; 
         if (additionalInfo) {
-            value = `${additionalInfo}: ${value}`;
+            value = `${EscapeHtml(additionalInfo)}: ${value}`;
         }
         return [friendlyName, value];
     }
@@ -545,6 +545,53 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
                     parameters: changesetID
                 });
             return [changesetID, url, ''];
+        }
+        // Example link to latest version: vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSomeFile.txt%2526changesetVersion%253DT%2526deletionId%253D0
+        // Example link to changeset 4: vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSomeFile.txt%2526changesetVersion%253D4%2526deletionId%253D0
+        // Example link to changeset 7, file in a folder, filename contains a '&': vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSome%252520folder%25252FFile%252520%252526%252520And.txt%2526changesetVersion%253DT%2526deletionId%253D0
+        else if (artifactType === 'VersionedItem') {
+            // Example for file in a folder, the filename contains a '&':
+            //   artifactId: '%252524%25252FTFVC%252520Project%25252FSome%252520folder%25252FFile%252520%252526%252520And.txt%2526changesetVersion%253DT%2526deletionId%253D0'
+            //   decodeURIComponent(artifactId): '%2524%252FTFVC%2520Project%252FSome%2520folder%252FFile%2520%2526%2520And.txt%26changesetVersion%3DT%26deletionId%3D0'
+            //   decodeURIComponent(decodeURIComponent(artifactId)): '%24%2FTFVC%20Project%2FSome%20folder%2FFile%20%26%20And.txt&changesetVersion=T&deletionId=0'
+            //   decodeURIComponent(decodeURIComponent(decodeURIComponent(artifactId))): '$/TFVC Project/Some folder/File & And.txt&changesetVersion=T&deletionId=0'
+            // => Need to extract the 'changesetVersion' after the second decodeURIComponent().
+            const twiceDecoded = decodeURIComponent(decodeURIComponent(artifactId));
+            const encodedPathAndArgumentsSplit = twiceDecoded.split('&');
+            
+            const details = SplitArtifactIdForRouteUrl(encodedPathAndArgumentsSplit[0], 3);
+            if (details.length !== 3) {
+                return undefined;
+            }
+
+            const [dollar, projectName, filepath] = details;
+            
+            let changesetVersion;
+            for (let idx = 1; idx < encodedPathAndArgumentsSplit.length; ++idx) {
+                const startStr = 'changesetVersion=';
+                if (encodedPathAndArgumentsSplit[idx].indexOf(startStr) === 0) {
+                    changesetVersion = encodedPathAndArgumentsSplit[idx].substring(startStr.length);
+                    break;
+                }
+            }
+
+            /*
+                "routeTemplates": [
+                    "{project}/{team}/_versionControl",
+                    "{project}/_versionControl"
+                ],
+            */
+            const url = await gLocationService.routeUrl(
+                'ms.vss-code-web.files-route-tfvc',
+                {
+                    project: projectName,
+                    path: filepath,
+                    version: changesetVersion
+                });
+
+            // 'T' for 'tip'. Compare 'repos-common\Util\Version.js' in the ADO server installation.
+            const readableChangeset = changesetVersion === 'T' ? 'Latest changeset' : `Changeset ${changesetVersion}`;
+            return [filepath, url, readableChangeset];
         }
     }
 
