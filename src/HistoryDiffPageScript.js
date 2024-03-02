@@ -403,7 +403,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     if (artifactTool === 'Git') {
         // Example: vstfs:///Git/Commit/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2054d8fcd16469d4398b2c73d9da828aaed98e41
         if (artifactType === 'Commit') {
-            const details = artifactId.split('%2F');
+            const details = SplitArtifactIdForRouteUrl(artifactId, 3);
             if (details.length !== 3) {
                 return undefined;
             }
@@ -434,7 +434,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
         // Example tag: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGTSomeTagInRepo
         // Example commit: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGC055a2cd8575bf236145656b4fc8559981cc690ba
         else if (artifactType === 'Ref') {
-            const details = artifactId.split('%2F');
+            const details = SplitArtifactIdForRouteUrl(artifactId, 3);
             if (details.length !== 3) {
                 return undefined;
             }
@@ -486,7 +486,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
         }
         // Example: vstfs:///Git/PullRequestId/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2
         else if (artifactType === 'PullRequestId') {
-            const details = artifactId.split('%2F');
+            const details = SplitArtifactIdForRouteUrl(artifactId, 3);
             if (details.length !== 3) {
                 return undefined;
             }
@@ -529,12 +529,56 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
                     project: currentProjectName,
                     parameters: artifactId
                 });
-            return [artifactId, url, ''];   
+            return [artifactId, url, ''];
         }
     }
 
     // Unknown artifact link.
     return undefined;
+}
+
+
+// We need to split the artifactId from a vstfs link into its components, so that we can supply them to the 'routeValues'
+// parameter of ILocationService.routeUrl(). There are two important traps here:
+// - An artifactId of a certain artifact tool and type has a certain number of components that are separated by '%2F',
+//   which is an encoded '/'. For example, the artifactId might consist of 3 components. Now, the string making up the
+//   final component might come from a name (e.g. a git branch) that by itself contained a '/', which got encoded with
+//   '%2F'. => We must split given artifactId only 'numComponents' times, and need to ensure, that the last component
+//   retains all occurrences of '%2F'.
+//   I think '/' cannot occur in the components except the last one. Parsing the artifactId would be ambiguous.
+// - Special characters such as '!' are encoded in the components of artifactId. For example, '!' as '%20'. We will
+//   pass the components in some form to ILocationService.routeUrl(), which itself runs it through the encoding process
+//   again. So if we give it '!' as '%20' we end up with '%2520', because routeUrl() encoded the '%', resulting in an
+//   invalid URL. => We must decode every component, so that routeUrl() can encode them again.
+function SplitArtifactIdForRouteUrl(artifactId, numComponents)
+{
+    let components = SplitWithRemainder(artifactId, '%2F', numComponents);
+    if (!components || components.length === 0) {
+        return components;
+    }
+    return components.map(decodeURIComponent);
+}
+
+
+// Like the standard String.split() function, it returns an array with at most 'limit' elements.
+// But if the given 'str' contains more separators that specified by 'limit', the last array element
+// contains all the remaining string without being split.
+function SplitWithRemainder(str, separator, limit)
+{
+    if (limit === 0) {
+        return [];
+    }
+    const fullySplit = str.split(separator);
+    if (!limit) {
+        return fullySplit;
+    }
+    
+    const lastElemsJoined = fullySplit.slice(limit - 1).join(separator);
+    let result = fullySplit.slice(0, limit - 1);
+    if (limit <= fullySplit.length) {        
+        result.push(lastElemsJoined);
+    }
+    return result;
 }
 
 
