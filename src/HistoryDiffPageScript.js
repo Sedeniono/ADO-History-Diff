@@ -391,10 +391,12 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     }
 
     // TODO:
-    // - Resolve project and repository ids for better display? I.e. in the history, show the project and repository names?
+    // - Retrieve information from the linked artifacts?
+    //   - Project and repository names for better display? I.e. in the history, show the project and repository names?
+    //   - Build information (succeeded, failed, deleted)?
+    // - Show small icons, as in the default ADO history?
     // - Support all other artifact link types.
     // - Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
-    // - TFS code references? (Compare e.g. constructLinkToContentFromRouteId())
     // - Check all places whether EscapeHtml() or encode...() is missing.
     // - Split into multiple functions, or a map or so.
     // - Wrap in try...catch?
@@ -592,6 +594,31 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
             // 'T' for 'tip'. Compare 'repos-common\Util\Version.js' in the ADO server installation.
             const readableChangeset = changesetVersion === 'T' ? 'Latest changeset' : `Changeset ${changesetVersion}`;
             return [filepath, url, readableChangeset];
+        }
+    }
+    else if (artifactTool === 'Build') {
+        // Used for 'Build', 'Found in build' and 'Integrated in build' links.
+        // Example: vstfs:///Build/Build/5
+        if (artifactType === 'Build') {
+            const buildId = artifactId;
+
+            /*
+                "routeTemplates": [
+                    "{project}/{team}/_build/results",
+                    "{project}/_build/results"
+                ],
+            */
+            const url = await gLocationService.routeUrl(
+                'ms.vss-build-web.ci-results-hub-route',
+                {
+                    // TODO: The build can be in a different project. Using the current project in this case results
+                    // in a URL pointing to a non-existent build. The buildId is unique over all projects. So we would 
+                    // need to query the project of the build.
+                    project: currentProjectName,
+                    buildId: buildId
+                });
+            
+            return [buildId, url, ''];
         }
     }
 
