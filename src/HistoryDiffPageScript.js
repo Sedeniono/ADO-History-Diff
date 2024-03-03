@@ -212,7 +212,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, current
                     const [friendlyName, change] = changeStrings;
                     // Note: The comment text is the *latest* version of the comment, i.e. not the comment text with
                     // which the link got added if the comment text got edited later. We still show it.
-                    // TODO: Show the actual history.
+                    // Apparently, ADO does not keep track of the link comment edits, so this is the best we can do.
                     let commentHtml = '';
                     if (relation.attributes?.comment) {
                         commentHtml = `<br><i>Newest link comment:</i> <ins class="diffCls">${EscapeHtml(relation.attributes.comment)}</ins>`;
@@ -732,7 +732,7 @@ async function ParseArtifactLinkBuildBuild(artifactLink, artifactId, currentProj
         {
             // TODO: The build can be in a different project. Using the current project in this case results
             // in a URL pointing to a non-existent build. The buildId is unique over all projects. So we would 
-            // need to query the project of the build.
+            // need to query the actual project of the build using some API.
             project: currentProjectName,
             buildId: buildId // Not in the routeTemplate, added as '?buildId='
         });
@@ -911,7 +911,7 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
     if (fieldsPropertiesMap?.[fieldReferenceName]?.isIdentity) {
         fieldType = gFieldTypeEnum.Identity;
     }
-    // Note for picklists: It seems that they are used only for user-added fields. They appear as combox boxes.
+    // Note for picklists: It seems that they are used only for user-added fields. They appear as combo boxes.
     // Similar to identities, picklists are also identified via an additional flag in the 'WorkItemField' interface. So PicklistString,
     // PicklistDouble and PicklistInteger shouldn't appear in the switch below. Moreover, for some reason the 'isPicklist' property is missing 
     // in the elements returned by IWorkItemFormService.getFields() (https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemformservice#azure-devops-extension-api-iworkitemformservice-getfields).
@@ -1413,7 +1413,6 @@ function CreateWorkItemPageEvents()
             // On the initial load we do nothing, because we already retrieved everything in InitializeHistoryDiff(). The advantage of doing
             // it there is that we get the 'spinning circle' indicator for free by ADO.
             if (gUnloadedCalled) {
-                // TODO: Would be more efficient to not load everything again if the user goes back to a previous work item in the query view.
                 LoadAndSetDiffInHTMLDocument();
             }
         },
@@ -1426,7 +1425,6 @@ function CreateWorkItemPageEvents()
 
         // Called after the user saved the work item.
         onSaved: function (args) {
-            // TODO: It would be more efficient to just get the latest update, not everything again.
             LoadAndSetDiffInHTMLDocument();
         },
 
