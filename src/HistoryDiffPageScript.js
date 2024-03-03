@@ -689,6 +689,17 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
             return [wikiPagePath, url, ''];
         }
     }
+    else if (artifactTool === 'Requirements') {
+        // According to the documentation (https://learn.microsoft.com/en-us/azure/devops/boards/queries/link-type-reference?view=azure-devops#external-link-type),
+        // a storyboard link is just a normal hyperlink. Apparently it is intended especially to link to PowerPoint files:
+        // https://learn.microsoft.com/en-us/previous-versions/azure/devops/boards/backlogs/office/storyboard-your-ideas-using-powerpoint?view=tfs-2017
+        // But this has been deprecated in ADO >= 2019. The artifact type still exists, however, and it actually allows linking to any file.
+        // Example: vstfs:///Requirements/Storyboard/https%3A%2F%2Ffile-examples.com%2Fwp-content%2Fstorage%2F2017%2F08%2Ffile_example_PPT_250kB.ppt
+        if (artifactType === 'Storyboard') {
+            const storyboardURL = decodeURIComponent(artifactId);
+            return [decodeURI(storyboardURL), storyboardURL, ''];
+        }
+    }
 
     // Unknown artifact link.
     return undefined;
