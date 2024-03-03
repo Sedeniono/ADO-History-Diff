@@ -273,7 +273,7 @@ async function GetUserFriendlyStringsForRelationChange(currentProjectName, relat
     }
     else if (relType === 'ArtifactLink') {
         // Link to some repository artifact (commit, pull request, branch, etc.), build artifact, wiki page, etc.
-        const friendlyName = relation.attributes?.name;
+        const friendlyName = EscapeHtml(relation.attributes?.name);
         const data = await TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, relation.url);
         if (!data) {
             // Unknown or broken artifact link: Simply display the raw url.
@@ -310,7 +310,7 @@ async function GetUserFriendlyStringsForRelationChange(currentProjectName, relat
     const apiURL = String(relation.url);
     const workItemFragmentIdx = apiURL.indexOf(workItemApiFragment);
     if (workItemFragmentIdx >= 0 && apiURL.indexOf('http') == 0) {
-        const friendlyName = relation.attributes?.name;
+        const friendlyName = EscapeHtml(relation.attributes?.name);
         const linkedItemNumber = apiURL.substring(workItemFragmentIdx + workItemApiFragment.length);
         const linkName = EscapeHtml(`Work item #${linkedItemNumber}`);
         // 'relation.url' contains the REST API link. There seems to be no official API to convert it to a link that
@@ -414,7 +414,6 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     //   - Information about tests?
     // - Show small icons, as in the default ADO history?
     // - Optimization: Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
-    // - Check all places whether EscapeHtml() or encode...() is missing.
     // - https://learn.microsoft.com/en-us/azure/devops/boards/queries/link-type-reference?view=azure-devops#external-link-type
     //   Go through it. Maybe some links are created automatically, but cannot be created by the user.
 
@@ -983,7 +982,7 @@ function GetFriendlyFieldName(fieldsPropertiesMap, fieldReferenceName)
         return 'Comment';
     }
 
-    return fieldsPropertiesMap?.[fieldReferenceName].name;
+    return EscapeHtml(fieldsPropertiesMap?.[fieldReferenceName].name);
 }
 
 
