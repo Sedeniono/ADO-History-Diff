@@ -420,34 +420,41 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
 
     const [, artifactTool, artifactType, artifactId] = matches;
 
-    const parsers = {
-        Git: {
-            Commit: ParseArtifactLinkGitCommit,
-            Ref: ParseArtifactLinkGitRef,
-            PullRequestId: ParseArtifactLinkGitPullRequest
-        },
-        // TFVC (Team Foundation Version Control) links
-        VersionControl: {
-            Changeset: ParseArtifactLinkVersionControlChangeset,
-            VersionedItem: ParseArtifactLinkVersionControlVersionedItem
-        },
-        Build: {
-            Build: ParseArtifactLinkBuildBuild
-        },
-        Wiki: {
-            WikiPage: ParseArtifactLinkWikiWikiPage
-        },
-        Requirements: {
-            Storyboard: ParseArtifactRequirementsStoryboard
-        },
-        TestManagement: {
-            TcmResult: ParseArtifactTestManagementTcmResult,
-            TcmResultAttachment: ParseArtifactTestManagementTcmResultAttachment,
-            TcmTest: ParseArtifactTestManagementTcmTest
-        }
-    };
+    try {
+        const parsers = {
+            Git: {
+                Commit: ParseArtifactLinkGitCommit,
+                Ref: ParseArtifactLinkGitRef,
+                PullRequestId: ParseArtifactLinkGitPullRequest
+            },
+            // TFVC (Team Foundation Version Control) links
+            VersionControl: {
+                Changeset: ParseArtifactLinkVersionControlChangeset,
+                VersionedItem: ParseArtifactLinkVersionControlVersionedItem
+            },
+            Build: {
+                Build: ParseArtifactLinkBuildBuild
+            },
+            Wiki: {
+                WikiPage: ParseArtifactLinkWikiWikiPage
+            },
+            Requirements: {
+                Storyboard: ParseArtifactRequirementsStoryboard
+            },
+            TestManagement: {
+                TcmResult: ParseArtifactTestManagementTcmResult,
+                TcmResultAttachment: ParseArtifactTestManagementTcmResultAttachment,
+                TcmTest: ParseArtifactTestManagementTcmTest
+            }
+        };
 
-    return parsers[artifactTool]?.[artifactType]?.(artifactLink, artifactId, currentProjectName);
+        return parsers[artifactTool]?.[artifactType]?.(artifactLink, artifactId, currentProjectName);
+    }
+    catch (ex) {
+        console.log(`HistoryDiff: Exception while parsing artifact link '${artifactLink}': ${ex}`);
+        // Will show the raw link text.
+        return undefined;
+    }
 }
 
 
