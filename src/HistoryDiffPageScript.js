@@ -356,10 +356,18 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     // Hence my guess that this is the intended way. However, allowed values for its parameters are not documented anywhere.
     // From my understanding:
     //   - The first parameter 'routeId' is some magic string/identifier that indicates the type of the URL to construct, i.e. it identifies
-    //     the route template to use. A route template is a string such as "{project}/_git/{vc.GitRepositoryName}/commit/{parameters}".
-    //     To be more precise, a 'routeId' is associated with multiple route templates. ADO apparently figures out which concrete
+    //     the route template to use. A route template is a string containing parameters in curly braces. Examples:
+    //        {project}/_git/{vc.GitRepositoryName}/commit/{parameters}
+    //        {project}/_wiki/wikis/{*wikiIdentifier}
+    //     To be more precise, a single 'routeId' is associated with multiple route templates. ADO apparently figures out which concrete
     //     route template to use from the given 'routeValues'. I guess this is the mechanism of getBestRouteMatch():
     //     https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/#azure-devops-extension-api-getbestroutematch
+    //     (roughly, the highest number of replacements wins).
+    //     An asterisk '*' in the route template is a so-called 'WildCardParam'. As far as I could tell from the ADO server installation
+    //     source files, the only difference is that routeUrl() runs the strings through encodeURIComponent() if '*' is missing from the 
+    //     route template parameter, and through encodeURI() if '*' is present. The only reference to this I could find in the documentation
+    //     is the statement: If the route template terminates in a wildcard, such as /api/{*restOfPath}, the value {restOfPath} is a string 
+    //     representation of the remaining path segments from the incoming request (https://learn.microsoft.com/en-us/azure/azure-functions/legacy-proxies#route-template-parameters).
     //   - The second parameter 'routeValues' is an object, where the fields correspond to placeholders in the route template.
     //
     // Possible values for the 'routeId' and 'routeValues' can be found by searching through the source files in the Azure DevOps Server
@@ -372,14 +380,23 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     //
     //
     // As an alternative to routeUrl(), we could also construct the URL ourselves. This would have the advantage of not requiring the
-    // undocumented values for 'routeId' and 'routeValues', and also would bypass the additional REST request. On the downside, the format
-    // of the URL itself is also not really documented. We also would need to find out the host name ourselves; this is actually not that
-    // straightforward because we run in an iframe, and the behavior is apparently different in ADO Server and ADO Services. We also would
-    // need to get the collection (ADO Server) or organization (ADO Services) in the URL ourselves. To this end, note that the gAdoSDK does
-    // provide some interfaces to get the data. But in my tests, they were cumbersome to use (only available in the gAdoSDK.ready() promise) 
-    // or broken (not even available in the gAdoSDK.ready() function, although I think they should be, or did not have the documented fields). 
+    // undocumented values for 'routeId' and 'routeValues', and also would bypass the additional REST requests.
+    // But there are several disadvantages or other problems:
+    //   - The format of the URL is not really documented. With this I mean for example that the wiki page path format
+    //     '<host>/<collectionOrOrganization>/<project>/_wiki/wikis/<wikiName>/<wikiPageId>/<wikiPageName>' is not documented.
+    //     In fact, the URL that routeUrl() constructs has a different format (which forwards to the actual site, for whatever reason).
+    //     I can also imagine that the URL format could change in the future.
+    //   - We also would need to find out the host name ourselves. This is actually not that straightforward: We run in an iframe, and the 
+    //     behavior is different in ADO Server (on-premise) and ADO Services. Even worse, ADO services changed the primary URL from 
+    //     '<org name>.visualStudio.com' to 'devops.azure.com/<org name>' in the past, but admins can still select which one to use in the 
+    //     ADO services settings. The documentation also states that the organization URL might change in the future again.
+    //     Compare https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls.
+    //   - We also would need to get the collection (ADO Server) or organization (ADO Services) in the URL ourselves. 
+    //   - To this end, note that gAdoSDK does provide some interfaces to get the data. But in my tests, they were cumbersome to use (only 
+    //     available in the gAdoSDK.ready() promise) or broken (not even available in the gAdoSDK.ready() function, although I think they 
+    //     should be, or did not have the documented fields). We would likely need to issue some REST requests manually to get the data.
     // Also, routeUrl() does seem like the intended way to construct the URL (except that Microsoft has forgotten to document it properly). 
-    // Therefore, using routeUrl() seems like the lesser evil.
+    // => Therefore, using routeUrl() seems like the lesser evil.
 
     if (typeof artifactLink !== 'string') {
         return undefined;
@@ -588,7 +605,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
                 {
                     project: projectName,
                     path: filepath,
-                    version: changesetVersion
+                    version: changesetVersion // Not in the routeTemplate, added as '?version='
                 });
 
             // 'T' for 'tip'. Compare 'repos-common\Util\Version.js' in the ADO server installation.
@@ -615,10 +632,61 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
                     // in a URL pointing to a non-existent build. The buildId is unique over all projects. So we would 
                     // need to query the project of the build.
                     project: currentProjectName,
-                    buildId: buildId
+                    buildId: buildId // Not in the routeTemplate, added as '?buildId='
                 });
             
             return [buildId, url, ''];
+        }
+    }
+    else if (artifactTool === 'Wiki') {
+        // Example link to page 'Difficult + Pa-ge/Difficult + SubPa-ge': 
+        // vstfs:///Wiki/WikiPage/2d63f741-0ba0-4bc6-b730-896745fab2c0%2F201005d4-3f97-4766-9b82-b69c89972e64%2FDifficult%20%2B%20Pa-ge%2FDifficult%20%2B%20SubPa-ge
+        if (artifactType === 'WikiPage') {
+            const details = SplitArtifactIdForRouteUrl(artifactId, 3);
+            if (details.length !== 3) {
+                return undefined;
+            }
+
+            // See 'page-rename-panel-content\WikiPageArtifactHelper.js' in the ADO server installation.
+            const [projectGuid, wikiId, wikiPagePath] = details;
+
+            if (!wikiPagePath) {
+                return undefined;
+            }
+
+            // The default ADO history does a few special things:
+            // - A minus '-' needs to end up as '%252D' in the final URL for ADO to be able to parse the URL 
+            //    => replace '-' with '%2D' before routeUrl().
+            // - Moreover, the default ADO history always starts the page path with '/' (encoded as '%2F'). So we do this, too.
+            // - The default ADO history also replaces a space ' ' with '+' instead of '%20' in the final encoded URL. However, we
+            //   don't do this, because we would need to do it after routeUrl() (because a '+' needs to end up as '%2B'), and ADO 
+            //   fortunately can also handle '%20' just fine (as it should, since '%20' should be a valid encoding for a space always; 
+            //   see e.g. https://stackoverflow.com/a/2678602).
+            // Also see normalizeWikiPagePath() in 'wiki-view-common-content\Utils\PathHelper.js' in the ADO server installation.
+            let normalizedPath = wikiPagePath.replace(/-/g, '%2D');
+            if (normalizedPath[0] != '/') {
+                normalizedPath = '/' + normalizedPath;
+            }
+
+            /*
+                "routeTemplates": [
+                    "{project}/{team}/_wiki/wikis/{wikiIdentifier}/{pageId}/{*friendlyName}",
+                    "{project}/{team}/_wiki/wikis/{*wikiIdentifier}",
+                    "{project}/_wiki/wikis/{wikiIdentifier}/{pageId}/{*friendlyName}",
+                    "{project}/_wiki/wikis/{*wikiIdentifier}",
+                    "{project}/{team}/_wiki",
+                    "{project}/_wiki"
+                ],
+            */
+            let url = await gLocationService.routeUrl(
+                'ms.vss-wiki-web.wiki-overview-nwp-route2',
+                {
+                    project: projectGuid,
+                    wikiIdentifier: wikiId,
+                    pagePath: normalizedPath // Not in the routeTemplate, added as '?pagePath='
+                });
+
+            return [wikiPagePath, url, ''];
         }
     }
 
