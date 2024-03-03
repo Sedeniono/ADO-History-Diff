@@ -280,7 +280,7 @@ async function GetUserFriendlyStringsForRelationChange(currentProjectName, relat
             return [friendlyName, EscapeHtml(relation.url)];
         }
         const [displayText, url, additionalInfo] = data;
-        let value = `<a href="${url}" target="_parent">${EscapeHtml(displayText)}</a>`; 
+        let value = url ? `<a href="${url}" target="_parent">${EscapeHtml(displayText)}</a>` : EscapeHtml(displayText);
         if (additionalInfo) {
             value = `${EscapeHtml(additionalInfo)}: ${value}`;
         }
@@ -305,7 +305,7 @@ async function GetUserFriendlyStringsForRelationChange(currentProjectName, relat
     }
 
     // For work item links, the relation.rel value can be one of quite a bunch. So we detect it by the relation.url.
-    // E.g.: http://<host>/DefaultCollection/2d63f741-0ba0-4bc6-b730-896745fab2c0/_apis/wit/workItems/2
+    // E.g.: http://<Host>/<Collection>/2d63f741-0ba0-4bc6-b730-896745fab2c0/_apis/wit/workItems/2
     const workItemApiFragment = '/_apis/wit/workItems/';
     const apiURL = String(relation.url);
     const workItemFragmentIdx = apiURL.indexOf(workItemApiFragment);
@@ -320,7 +320,7 @@ async function GetUserFriendlyStringsForRelationChange(currentProjectName, relat
         return [friendlyName, value];
     }
     
-    // TODO: Haven't tested github links, remote work links types (links between organizations), links to storyboards, links to tests.
+    // TODO: Haven't tested github links and remote work links types (links between organizations).
     return ['(Unsupported link type)', '(Showing the change is not supported.)'];
 }
 
@@ -383,7 +383,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     // undocumented values for 'routeId' and 'routeValues', and also would bypass the additional REST requests.
     // But there are several disadvantages or other problems:
     //   - The format of the URL is not really documented. With this I mean for example that the wiki page path format
-    //     '<host>/<collectionOrOrganization>/<project>/_wiki/wikis/<wikiName>/<wikiPageId>/<wikiPageName>' is not documented.
+    //     '<Host>/<collectionOrOrganization>/<project>/_wiki/wikis/<wikiName>/<wikiPageId>/<wikiPageName>' is not documented.
     //     In fact, the URL that routeUrl() constructs has a different format (which forwards to the actual site, for whatever reason).
     //     I can also imagine that the URL format could change in the future.
     //   - We also would need to find out the host name ourselves. This is actually not that straightforward: We run in an iframe, and the 
@@ -417,10 +417,13 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     // - Check all places whether EscapeHtml() or encode...() is missing.
     // - Split into multiple functions, or a map or so.
     // - Wrap in try...catch?
+    // - https://learn.microsoft.com/en-us/azure/devops/boards/queries/link-type-reference?view=azure-devops#external-link-type
+    //   Go through it. Maybe some links are created automatically, but cannot be created by the user.
 
     const [, artifactTool, artifactType, artifactId] = matches;
     if (artifactTool === 'Git') {
         // Example: vstfs:///Git/Commit/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2054d8fcd16469d4398b2c73d9da828aaed98e41
+        //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/c0d1232d-66e9-4d5e-b5a0-50366bc67991/commit/2054d8fcd16469d4398b2c73d9da828aaed98e41
         if (artifactType === 'Commit') {
             const details = SplitArtifactIdForRouteUrl(artifactId, 3);
             if (details.length !== 3) {
@@ -450,7 +453,11 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
             return [commitId, url, ''];
         }
         // Example branch: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
+        //    => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/c0d1232d-66e9-4d5e-b5a0-50366bc67991?version=GBmain
+        //       (we will use the project GUID instead of the project name)
         // Example tag: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGTSomeTagInRepo
+        //    => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/c0d1232d-66e9-4d5e-b5a0-50366bc67991?version=GTSomeTagInRepo
+        //       (we will use the project GUID instead of the project name)
         // Example commit: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGC055a2cd8575bf236145656b4fc8559981cc690ba
         else if (artifactType === 'Ref') {
             const details = SplitArtifactIdForRouteUrl(artifactId, 3);
@@ -504,6 +511,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
             return [refName, url, refType];
         }
         // Example: vstfs:///Git/PullRequestId/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2
+        //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/TestRepo/pullrequest/2?_a=overview
         else if (artifactType === 'PullRequestId') {
             const details = SplitArtifactIdForRouteUrl(artifactId, 3);
             if (details.length !== 3) {
@@ -533,6 +541,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     // TFVC (Team Foundation Version Control) links
     else if (artifactTool === 'VersionControl') {
         // Example: vstfs:///VersionControl/Changeset/3
+        //   => URL in the default ADO history: http://<Host>/<Collection>/TFVC%20Project/_versionControl/changeset/3
         if (artifactType === 'Changeset') {
             const changesetID = artifactId;
 
@@ -567,7 +576,8 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
         }
         // Example link to latest version: vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSomeFile.txt%2526changesetVersion%253DT%2526deletionId%253D0
         // Example link to changeset 4: vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSomeFile.txt%2526changesetVersion%253D4%2526deletionId%253D0
-        // Example link to changeset 7, file in a folder, filename contains a '&': vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSome%252520folder%25252FFile%252520%252526%252520And.txt%2526changesetVersion%253DT%2526deletionId%253D0
+        // Example link to latest changeset, file in a folder, filename contains a '&': vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSome%252520folder%25252FFile%252520%252526%252520And.txt%2526changesetVersion%253DT%2526deletionId%253D0
+        //   => URL in the default ADO history: http://<Host>/<Collection>/TFVC%20Project/_versionControl?path=%24%2FTFVC%20Project%2FSome%20folder%2FFile%20%26%20And.txt&version=T&_a=contents
         else if (artifactType === 'VersionedItem') {
             // Example for file in a folder, the filename contains a '&':
             //   artifactId: '%252524%25252FTFVC%252520Project%25252FSome%252520folder%25252FFile%252520%252526%252520And.txt%2526changesetVersion%253DT%2526deletionId%253D0'
@@ -616,6 +626,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     else if (artifactTool === 'Build') {
         // Used for 'Build', 'Found in build' and 'Integrated in build' links.
         // Example: vstfs:///Build/Build/5
+        //   => URL in the default ADO history: http://<Host>/<Collection>/2d63f741-0ba0-4bc6-b730-896745fab2c0/_build/results?buildId=5
         if (artifactType === 'Build') {
             const buildId = artifactId;
 
@@ -641,6 +652,7 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     else if (artifactTool === 'Wiki') {
         // Example link to page 'Difficult + Pa-ge/Difficult + SubPa-ge': 
         // vstfs:///Wiki/WikiPage/2d63f741-0ba0-4bc6-b730-896745fab2c0%2F201005d4-3f97-4766-9b82-b69c89972e64%2FDifficult%20%2B%20Pa-ge%2FDifficult%20%2B%20SubPa-ge
+        //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_wiki/wikis/201005d4-3f97-4766-9b82-b69c89972e64?pagePath=%2FDifficult+%2B+Pa%252Dge%2FDifficult+%2B+SubPa%252Dge
         if (artifactType === 'WikiPage') {
             const details = SplitArtifactIdForRouteUrl(artifactId, 3);
             if (details.length !== 3) {
@@ -695,9 +707,73 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
         // https://learn.microsoft.com/en-us/previous-versions/azure/devops/boards/backlogs/office/storyboard-your-ideas-using-powerpoint?view=tfs-2017
         // But this has been deprecated in ADO >= 2019. The artifact type still exists, however, and it actually allows linking to any file.
         // Example: vstfs:///Requirements/Storyboard/https%3A%2F%2Ffile-examples.com%2Fwp-content%2Fstorage%2F2017%2F08%2Ffile_example_PPT_250kB.ppt
+        //   => URL in the default ADO history: https://file-examples.com/wp-content/storage/2017/08/file_example_PPT_250kB.ppt
         if (artifactType === 'Storyboard') {
             const storyboardURL = decodeURIComponent(artifactId);
             return [decodeURI(storyboardURL), storyboardURL, ''];
+        }
+    }
+    else if (artifactTool === 'TestManagement') {
+        // Example: vstfs:///TestManagement/TcmResult/5.100000
+        //   => URL in the default ADO history: http://<Host>/<collection>//<Project>/_testManagement/runs/?_a=resultSummary&runId=5&resultId=100000
+        // See addResultLinkToWorkItem() in 'TestManagement\Scripts\TFS.TestManagement.js' in the ADO Server installation.
+        if (artifactType === 'TcmResult') {
+            const details = artifactId.split('.');
+            if (details.length !== 2) {
+                return undefined;
+            }
+            const [testRunId, testResultId] = details;
+
+            /*
+                "routeTemplates": [
+                    "{project}/{team}/_testManagement/runs",
+                    "{project}/_testManagement/runs"
+                ],
+            */
+            let url = await gLocationService.routeUrl(
+                'ms.vss-test-web.test-runs-route',
+                {
+                    project: currentProjectName, // TODO: Can the test be in a different project?
+                    '_a': 'resultSummary', // Not in the routeTemplate, added as '?_a='
+                    runId: testRunId, // Not in the routeTemplate, added as '?runId='
+                    resultId: testResultId // Not in the routeTemplate, added as '?resultId='
+                });
+
+            // TODO: Show the test name? But need to query another API...
+            return [`Test run ${testRunId}, test result ${testResultId}`, url, ''];
+        }
+        // Example (linking to test attachment 'SomeFile (1).txt'): vstfs:///TestManagement/TcmResultAttachment/3.100000.3
+        //   => URL in the default ADO history: http://<Host>/<collection>/2d63f741-0ba0-4bc6-b730-896745fab2c0/_api/_testManagement/downloadTcmAttachment?testResultAttachmentUri=vstfs%3A%2F%2F%2FTestManagement%2FTcmResultAttachment%2F3.100000.4
+        else if (artifactType === 'TcmResultAttachment') {
+            // There does not seem to be a routeId or route template for result attachments. So we need to construct it ourselves.
+            // We simply use 'ms.vss-test-web.test-runs-route' to get the basic part of the URL (especially host and collection/organization). 
+            // This is basically a hack.
+            // Resulting runsURL example: http://<Host>/<collection>/<Project>/_testManagement/runs
+            // TODO: Can the test be in a different project?
+            const runsURL = await gLocationService.routeUrl('ms.vss-test-web.test-runs-route', { project: currentProjectName });
+            
+            const runsSuffix = '/_testManagement/runs';
+            if (runsURL.indexOf(runsSuffix) !== runsURL.length - runsSuffix.length) {
+                return undefined;
+            }
+
+            const baseURL = runsURL.substring(0, runsURL.length - runsSuffix.length + 1);
+            const fullURL = `${baseURL}_api/_testManagement/downloadTcmAttachment?testResultAttachmentUri=${encodeURIComponent(artifactLink)}`;
+
+            // TODO: Show the file name? Probably not worth the effort, since ADO puts the filename into the link comment,
+            // and we show the link comment right below the actual link.
+            return [`Attachment ${artifactId}`, fullURL , ''];
+        }
+        // Example: vstfs:///TestManagement/TcmTest/1
+        //   => URL in the default ADO history: http://<Host>/<collection>/<project>/_TestManagement/Runs?_a=contribution&runId=5&resultId=100000&selectedGroupBy=group-by-branch&contributionId=ms.vss-test-web.test-result-history
+        else if (artifactType === 'TcmTest') {
+            // The artifactId (in the example, the '1') is named 'testCaseReferenceId' or 'testCaseRefId' in the ADO server installation source files.
+            // The default ADO history shows mostly the same link as for 'TcmResult', except that it leads directly to the 'history' tab of the run.
+            // Not really sure how we get from the '1' given for the 'TcmTest' to the 'runId=5&resultId=100000'... There seems to be some undocumented
+            // API involved. 
+            // For now, we simply display just the testcase reference id, without a hyperlink.
+            // TODO: Improvie this.
+            return [`Testcase reference ID ${artifactId}`, '', ''];
         }
     }
 
@@ -870,16 +946,16 @@ async function GetAllRevisionUpdates(workItemId, projectName)
     //      Most additional information looks uninteresting.
     //      Except maybe the parameter 'Relations'=1, which seems to include changes in the 'related to' links.
     // Resulting REST queries:
-    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/2/revisions
-    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/2/revisions?%24top=5
-    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/2/revisions?%24skip=3
-    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/3/revisions?%24expand=1
-    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/3/revisions?%24top=3&%24skip=4
+    //   http://<Host>/<Collection>/<Project>/_apis/wit/workItems/2/revisions
+    //   http://<Host>/<Collection>/<Project>/_apis/wit/workItems/2/revisions?%24top=5
+    //   http://<Host>/<Collection>/<Project>/_apis/wit/workItems/2/revisions?%24skip=3
+    //   http://<Host>/<Collection>/<Project>/_apis/wit/workItems/3/revisions?%24expand=1
+    //   http://<Host>/<Collection>/<Project>/_apis/wit/workItems/3/revisions?%24top=3&%24skip=4
     //return gWorkItemRESTClient.getRevisions(workItemId, projectName);
 
     // getUpdates(): https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient#azure-devops-extension-api-workitemtrackingrestclient-getupdates
     // Examples of a resulting REST query:
-    //   http://<host>/DefaultCollection/TestProject/_apis/wit/workItems/4/updates
+    //   http://<Host>/<Collection>/<Project>/_apis/wit/workItems/4/updates
     // Otherwise behaves the same as getRevisions().
     //
     // ADO usually returns at most 200 elements. So we need a loop that successively requests elements, until ADO no longer
@@ -1109,8 +1185,8 @@ async function GetMapOfFieldProperties(workItemFormService)
     // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemformservice#azure-devops-extension-api-iworkitemformservice-getfields
     //
     // More or less corresponds to a REST request such as:
-    // http://<host>/DefaultCollection/TestProject/_apis/wit/fields (compare https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/fields/list)
-    // (there is also e.g. http://<host>/DefaultCollection/TestProject/_apis/wit/workitemtypes/issue/fields, 
+    // http://<Host>/<Collection>/<Project>/_apis/wit/fields (compare https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/fields/list)
+    // (there is also e.g. http://<Host>/<Collection>/<Project>/_apis/wit/workitemtypes/issue/fields, 
     // https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-item-types-field/list, but I don't think that this is the one underlying here.)
     //
     // Note that getFields() doesn't actually seem to issue a REST request because the information is already on the client.
