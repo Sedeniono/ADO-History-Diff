@@ -411,374 +411,43 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     // - Retrieve information from the linked artifacts?
     //   - Project and repository names for better display? I.e. in the history, show the project and repository names?
     //   - Build information (succeeded, failed, deleted)?
+    //   - Information about tests?
     // - Show small icons, as in the default ADO history?
-    // - Support all other artifact link types.
-    // - Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
+    // - Optimization: Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
     // - Check all places whether EscapeHtml() or encode...() is missing.
-    // - Split into multiple functions, or a map or so.
-    // - Wrap in try...catch?
     // - https://learn.microsoft.com/en-us/azure/devops/boards/queries/link-type-reference?view=azure-devops#external-link-type
     //   Go through it. Maybe some links are created automatically, but cannot be created by the user.
 
     const [, artifactTool, artifactType, artifactId] = matches;
-    if (artifactTool === 'Git') {
-        // Example: vstfs:///Git/Commit/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2054d8fcd16469d4398b2c73d9da828aaed98e41
-        //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/c0d1232d-66e9-4d5e-b5a0-50366bc67991/commit/2054d8fcd16469d4398b2c73d9da828aaed98e41
-        if (artifactType === 'Commit') {
-            const details = SplitArtifactIdForRouteUrl(artifactId, 3);
-            if (details.length !== 3) {
-                return undefined;
-            }
 
-            // Compare 'VersionControl/Scripts/CommitArtifact.js' and 'wit-linked-work-dropdown-content\Util\Artifact.js' in the ADO Server installation.
-            const [projectGuid, repositoryId, commitId] = details;
-
-            /*
-                "routeTemplates": [
-                    "{project}/{team}/_git/{vc.GitRepositoryName}/commit/{parameters}/{reviewMode}",
-                    "{project}/{team}/_git/{vc.GitRepositoryName}/commit/{parameters}",
-                    "{project}/_git/{vc.GitRepositoryName}/commit/{parameters}/{reviewMode}",
-                    "{project}/_git/{vc.GitRepositoryName}/commit/{parameters}",
-                    "_git/{project}/commit/{parameters}/{reviewMode}",
-                    "_git/{project}/commit/{parameters}"
-                ],
-            */
-            const url = await gLocationService.routeUrl(
-                'ms.vss-code-web.commit-route',
-                {
-                    project: projectGuid,
-                    'vc.GitRepositoryName': repositoryId,
-                    parameters: commitId
-                });
-            return [commitId, url, ''];
+    const parsers = {
+        Git: {
+            Commit: ParseArtifactLinkGitCommit,
+            Ref: ParseArtifactLinkGitRef,
+            PullRequestId: ParseArtifactLinkGitPullRequest
+        },
+        // TFVC (Team Foundation Version Control) links
+        VersionControl: {
+            Changeset: ParseArtifactLinkVersionControlChangeset,
+            VersionedItem: ParseArtifactLinkVersionControlVersionedItem
+        },
+        Build: {
+            Build: ParseArtifactLinkBuildBuild
+        },
+        Wiki: {
+            WikiPage: ParseArtifactLinkWikiWikiPage
+        },
+        Requirements: {
+            Storyboard: ParseArtifactRequirementsStoryboard
+        },
+        TestManagement: {
+            TcmResult: ParseArtifactTestManagementTcmResult,
+            TcmResultAttachment: ParseArtifactTestManagementTcmResultAttachment,
+            TcmTest: ParseArtifactTestManagementTcmTest
         }
-        // Example branch: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
-        //    => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/c0d1232d-66e9-4d5e-b5a0-50366bc67991?version=GBmain
-        //       (we will use the project GUID instead of the project name)
-        // Example tag: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGTSomeTagInRepo
-        //    => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/c0d1232d-66e9-4d5e-b5a0-50366bc67991?version=GTSomeTagInRepo
-        //       (we will use the project GUID instead of the project name)
-        // Example commit: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGC055a2cd8575bf236145656b4fc8559981cc690ba
-        else if (artifactType === 'Ref') {
-            const details = SplitArtifactIdForRouteUrl(artifactId, 3);
-            if (details.length !== 3) {
-                return undefined;
-            }
+    };
 
-            // Compare 'wit-linked-work-dropdown-content\Util\Artifact.js', constructLinkToContentFromRouteId() in 'Search\Scenarios\Shared\Utils.js' 
-            // and 'common-content\Utils\Ref.js' in the ADO Server installation.
-            // Git branches are prefixed with 'GB', git tags with 'GT', and git commits with 'GC'.
-            const [projectGuid, repositoryId, refNameWithPrefix] = details;
-            let refType;
-            if (refNameWithPrefix.indexOf('GB') === 0) {
-                refType = 'Branch';
-            }
-            else if (refNameWithPrefix.indexOf('GT') === 0) {
-                refType = 'Tag';
-            }
-            else if (refNameWithPrefix.indexOf('GC') === 0) {
-                // The ADO source files show that 'GC' is possible. However, I don't think that this type can be created via the ADO UI.
-                // The UI creates a vstfs:///Git/Commit/... url when linking to commits, not a vstfs:///Git/Ref/ url.
-                // But it is possible via the REST API (https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/update?view=azure-devops-server-rest-6.0&tabs=HTTP#add-a-link).
-                // The URL we create below does work correctly for commits. However, the 'links' tab in ADO doesn't show such links. Weird. Maybe 
-                // a leftover from earlier ADO versions?
-                refType = 'Commit';
-            }
-            else {
-                // Note: The REST API (https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/update?view=azure-devops-server-rest-6.0&tabs=HTTP#add-a-link)
-                // actually allows to create invalid links, e.g. vstfs:///Git/Ref/SomethingInvalid
-                // However, the 'links' tab in ADO doesn't show them.
-                return undefined;
-            }
-
-            const refName = refNameWithPrefix.substring(2);
-
-            /*
-                "routeTemplates": [
-                    "{project}/{team}/_git/{vc.GitRepositoryName}",
-                    "{project}/_git/{vc.GitRepositoryName}",
-                    "_git/{project}"
-                ],
-            */
-            const url = await gLocationService.routeUrl(
-                'ms.vss-code-web.files-route-git',
-                {
-                    project: projectGuid,
-                    'vc.GitRepositoryName': repositoryId,
-                    // The branch/tag/commit name must be appended as '?version=refNameWithPrefix' to the URL.
-                    version: refNameWithPrefix
-                });
-            return [refName, url, refType];
-        }
-        // Example: vstfs:///Git/PullRequestId/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2
-        //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/TestRepo/pullrequest/2?_a=overview
-        else if (artifactType === 'PullRequestId') {
-            const details = SplitArtifactIdForRouteUrl(artifactId, 3);
-            if (details.length !== 3) {
-                return undefined;
-            }
-
-            // See 'VersionControl\Scripts\PullRequestArtifact.js' in the ADO Server installation.
-            const [projectGuid, repositoryId, pullRequestId] = details;
-
-            /*
-                "routeTemplates": [
-                    "{project}/{team}/_git/{vc.GitRepositoryName}/pullrequest/{parameters}",
-                    "{project}/_git/{vc.GitRepositoryName}/pullrequest/{parameters}",
-                    "_git/{project}/pullrequest/{parameters}"
-                ],
-            */
-            const url = await gLocationService.routeUrl(
-                'ms.vss-code-web.pull-request-review-route',
-                {
-                    project: projectGuid,
-                    'vc.GitRepositoryName': repositoryId,
-                    parameters: pullRequestId
-                });
-            return [pullRequestId, url, ''];
-        }
-    }
-    // TFVC (Team Foundation Version Control) links
-    else if (artifactTool === 'VersionControl') {
-        // Example: vstfs:///VersionControl/Changeset/3
-        //   => URL in the default ADO history: http://<Host>/<Collection>/TFVC%20Project/_versionControl/changeset/3
-        if (artifactType === 'Changeset') {
-            const changesetID = artifactId;
-
-            /*
-                "routeTemplates": [
-                    "{project}/{team}/_versionControl/changeset/{parameters}/{reviewMode}",
-                    "{project}/{team}/_versionControl/changeset/{parameters}",
-                    "{project}/_versionControl/changeset/{parameters}/{reviewMode}",
-                    "{project}/_versionControl/changeset/{parameters}"
-                ],
-            */
-            const url = await gLocationService.routeUrl(
-                'ms.vss-code-web.changeset-route',
-                {
-                    // The ADO UI of work items apparently does not allow to link to TFVC changesets in other projects.
-                    // However, when creating a changeset in another project, one is allowed to link it to a work item
-                    // in another project. Hence, ADO does know links to changesets in other projects. Problem: The
-                    // vstfs link does not contain the project containing the changeset. Changeset numbers seem, however,
-                    // to be unique across all projects/repos. So the project is in principle not necessary. The ADO server
-                    // source files even show that there is another routeId ('collection-changeset-route') and with a route 
-                    // template '_versionControl/changeset/{parameters}' without the project . However, the resulting URL is
-                    // invalid. So, to be precise, we would need to use some ADO API to query the project containing the given
-                    // changeset ID. But all of this seems quite troublesome and not worth the effort: First of all,
-                    // specifying an incorrect project here still results in a valid URL to the changeset (but ADO displays
-                    // the changeset then in the context of the given project). Second, who is still using TFVC? Third,
-                    // the few people who use TFVC will probably not use links to TFVC repos in other projects.
-                    // => Simply use the current work item's project.
-                    project: currentProjectName,
-                    parameters: changesetID
-                });
-            return [changesetID, url, ''];
-        }
-        // Example link to latest version: vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSomeFile.txt%2526changesetVersion%253DT%2526deletionId%253D0
-        // Example link to changeset 4: vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSomeFile.txt%2526changesetVersion%253D4%2526deletionId%253D0
-        // Example link to latest changeset, file in a folder, filename contains a '&': vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSome%252520folder%25252FFile%252520%252526%252520And.txt%2526changesetVersion%253DT%2526deletionId%253D0
-        //   => URL in the default ADO history: http://<Host>/<Collection>/TFVC%20Project/_versionControl?path=%24%2FTFVC%20Project%2FSome%20folder%2FFile%20%26%20And.txt&version=T&_a=contents
-        else if (artifactType === 'VersionedItem') {
-            // Example for file in a folder, the filename contains a '&':
-            //   artifactId: '%252524%25252FTFVC%252520Project%25252FSome%252520folder%25252FFile%252520%252526%252520And.txt%2526changesetVersion%253DT%2526deletionId%253D0'
-            //   decodeURIComponent(artifactId): '%2524%252FTFVC%2520Project%252FSome%2520folder%252FFile%2520%2526%2520And.txt%26changesetVersion%3DT%26deletionId%3D0'
-            //   decodeURIComponent(decodeURIComponent(artifactId)): '%24%2FTFVC%20Project%2FSome%20folder%2FFile%20%26%20And.txt&changesetVersion=T&deletionId=0'
-            //   decodeURIComponent(decodeURIComponent(decodeURIComponent(artifactId))): '$/TFVC Project/Some folder/File & And.txt&changesetVersion=T&deletionId=0'
-            // => Need to extract the 'changesetVersion' after the second decodeURIComponent().
-            const twiceDecoded = decodeURIComponent(decodeURIComponent(artifactId));
-            const encodedPathAndArgumentsSplit = twiceDecoded.split('&');
-            
-            const details = SplitArtifactIdForRouteUrl(encodedPathAndArgumentsSplit[0], 3);
-            if (details.length !== 3) {
-                return undefined;
-            }
-
-            const [dollar, projectName, filepath] = details;
-            
-            let changesetVersion;
-            for (let idx = 1; idx < encodedPathAndArgumentsSplit.length; ++idx) {
-                const startStr = 'changesetVersion=';
-                if (encodedPathAndArgumentsSplit[idx].indexOf(startStr) === 0) {
-                    changesetVersion = encodedPathAndArgumentsSplit[idx].substring(startStr.length);
-                    break;
-                }
-            }
-
-            /*
-                "routeTemplates": [
-                    "{project}/{team}/_versionControl",
-                    "{project}/_versionControl"
-                ],
-            */
-            const url = await gLocationService.routeUrl(
-                'ms.vss-code-web.files-route-tfvc',
-                {
-                    project: projectName,
-                    path: filepath,
-                    version: changesetVersion // Not in the routeTemplate, added as '?version='
-                });
-
-            // 'T' for 'tip'. Compare 'repos-common\Util\Version.js' in the ADO server installation.
-            const readableChangeset = changesetVersion === 'T' ? 'Latest changeset' : `Changeset ${changesetVersion}`;
-            return [filepath, url, readableChangeset];
-        }
-    }
-    else if (artifactTool === 'Build') {
-        // Used for 'Build', 'Found in build' and 'Integrated in build' links.
-        // Example: vstfs:///Build/Build/5
-        //   => URL in the default ADO history: http://<Host>/<Collection>/2d63f741-0ba0-4bc6-b730-896745fab2c0/_build/results?buildId=5
-        if (artifactType === 'Build') {
-            const buildId = artifactId;
-
-            /*
-                "routeTemplates": [
-                    "{project}/{team}/_build/results",
-                    "{project}/_build/results"
-                ],
-            */
-            const url = await gLocationService.routeUrl(
-                'ms.vss-build-web.ci-results-hub-route',
-                {
-                    // TODO: The build can be in a different project. Using the current project in this case results
-                    // in a URL pointing to a non-existent build. The buildId is unique over all projects. So we would 
-                    // need to query the project of the build.
-                    project: currentProjectName,
-                    buildId: buildId // Not in the routeTemplate, added as '?buildId='
-                });
-            
-            return [buildId, url, ''];
-        }
-    }
-    else if (artifactTool === 'Wiki') {
-        // Example link to page 'Difficult + Pa-ge/Difficult + SubPa-ge': 
-        // vstfs:///Wiki/WikiPage/2d63f741-0ba0-4bc6-b730-896745fab2c0%2F201005d4-3f97-4766-9b82-b69c89972e64%2FDifficult%20%2B%20Pa-ge%2FDifficult%20%2B%20SubPa-ge
-        //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_wiki/wikis/201005d4-3f97-4766-9b82-b69c89972e64?pagePath=%2FDifficult+%2B+Pa%252Dge%2FDifficult+%2B+SubPa%252Dge
-        if (artifactType === 'WikiPage') {
-            const details = SplitArtifactIdForRouteUrl(artifactId, 3);
-            if (details.length !== 3) {
-                return undefined;
-            }
-
-            // See 'page-rename-panel-content\WikiPageArtifactHelper.js' in the ADO server installation.
-            const [projectGuid, wikiId, wikiPagePath] = details;
-
-            if (!wikiPagePath) {
-                return undefined;
-            }
-
-            // The default ADO history does a few special things:
-            // - A minus '-' needs to end up as '%252D' in the final URL for ADO to be able to parse the URL 
-            //    => replace '-' with '%2D' before routeUrl().
-            // - Moreover, the default ADO history always starts the page path with '/' (encoded as '%2F'). So we do this, too.
-            // - The default ADO history also replaces a space ' ' with '+' instead of '%20' in the final encoded URL. However, we
-            //   don't do this, because we would need to do it after routeUrl() (because a '+' needs to end up as '%2B'), and ADO 
-            //   fortunately can also handle '%20' just fine (as it should, since '%20' should be a valid encoding for a space always; 
-            //   see e.g. https://stackoverflow.com/a/2678602).
-            // Also see normalizeWikiPagePath() in 'wiki-view-common-content\Utils\PathHelper.js' in the ADO server installation.
-            let normalizedPath = wikiPagePath.replace(/-/g, '%2D');
-            if (normalizedPath[0] != '/') {
-                normalizedPath = '/' + normalizedPath;
-            }
-
-            /*
-                "routeTemplates": [
-                    "{project}/{team}/_wiki/wikis/{wikiIdentifier}/{pageId}/{*friendlyName}",
-                    "{project}/{team}/_wiki/wikis/{*wikiIdentifier}",
-                    "{project}/_wiki/wikis/{wikiIdentifier}/{pageId}/{*friendlyName}",
-                    "{project}/_wiki/wikis/{*wikiIdentifier}",
-                    "{project}/{team}/_wiki",
-                    "{project}/_wiki"
-                ],
-            */
-            let url = await gLocationService.routeUrl(
-                'ms.vss-wiki-web.wiki-overview-nwp-route2',
-                {
-                    project: projectGuid,
-                    wikiIdentifier: wikiId,
-                    pagePath: normalizedPath // Not in the routeTemplate, added as '?pagePath='
-                });
-
-            return [wikiPagePath, url, ''];
-        }
-    }
-    else if (artifactTool === 'Requirements') {
-        // According to the documentation (https://learn.microsoft.com/en-us/azure/devops/boards/queries/link-type-reference?view=azure-devops#external-link-type),
-        // a storyboard link is just a normal hyperlink. Apparently it is intended especially to link to PowerPoint files:
-        // https://learn.microsoft.com/en-us/previous-versions/azure/devops/boards/backlogs/office/storyboard-your-ideas-using-powerpoint?view=tfs-2017
-        // But this has been deprecated in ADO >= 2019. The artifact type still exists, however, and it actually allows linking to any file.
-        // Example: vstfs:///Requirements/Storyboard/https%3A%2F%2Ffile-examples.com%2Fwp-content%2Fstorage%2F2017%2F08%2Ffile_example_PPT_250kB.ppt
-        //   => URL in the default ADO history: https://file-examples.com/wp-content/storage/2017/08/file_example_PPT_250kB.ppt
-        if (artifactType === 'Storyboard') {
-            const storyboardURL = decodeURIComponent(artifactId);
-            return [decodeURI(storyboardURL), storyboardURL, ''];
-        }
-    }
-    else if (artifactTool === 'TestManagement') {
-        // Example: vstfs:///TestManagement/TcmResult/5.100000
-        //   => URL in the default ADO history: http://<Host>/<collection>//<Project>/_testManagement/runs/?_a=resultSummary&runId=5&resultId=100000
-        // See addResultLinkToWorkItem() in 'TestManagement\Scripts\TFS.TestManagement.js' in the ADO Server installation.
-        if (artifactType === 'TcmResult') {
-            const details = artifactId.split('.');
-            if (details.length !== 2) {
-                return undefined;
-            }
-            const [testRunId, testResultId] = details;
-
-            /*
-                "routeTemplates": [
-                    "{project}/{team}/_testManagement/runs",
-                    "{project}/_testManagement/runs"
-                ],
-            */
-            let url = await gLocationService.routeUrl(
-                'ms.vss-test-web.test-runs-route',
-                {
-                    project: currentProjectName, // TODO: Can the test be in a different project?
-                    '_a': 'resultSummary', // Not in the routeTemplate, added as '?_a='
-                    runId: testRunId, // Not in the routeTemplate, added as '?runId='
-                    resultId: testResultId // Not in the routeTemplate, added as '?resultId='
-                });
-
-            // TODO: Show the test name? But need to query another API...
-            return [`Test run ${testRunId}, test result ${testResultId}`, url, ''];
-        }
-        // Example (linking to test attachment 'SomeFile (1).txt'): vstfs:///TestManagement/TcmResultAttachment/3.100000.3
-        //   => URL in the default ADO history: http://<Host>/<collection>/2d63f741-0ba0-4bc6-b730-896745fab2c0/_api/_testManagement/downloadTcmAttachment?testResultAttachmentUri=vstfs%3A%2F%2F%2FTestManagement%2FTcmResultAttachment%2F3.100000.4
-        else if (artifactType === 'TcmResultAttachment') {
-            // There does not seem to be a routeId or route template for result attachments. So we need to construct it ourselves.
-            // We simply use 'ms.vss-test-web.test-runs-route' to get the basic part of the URL (especially host and collection/organization). 
-            // This is basically a hack.
-            // Resulting runsURL example: http://<Host>/<collection>/<Project>/_testManagement/runs
-            // TODO: Can the test be in a different project?
-            const runsURL = await gLocationService.routeUrl('ms.vss-test-web.test-runs-route', { project: currentProjectName });
-            
-            const runsSuffix = '/_testManagement/runs';
-            if (runsURL.indexOf(runsSuffix) !== runsURL.length - runsSuffix.length) {
-                return undefined;
-            }
-
-            const baseURL = runsURL.substring(0, runsURL.length - runsSuffix.length + 1);
-            const fullURL = `${baseURL}_api/_testManagement/downloadTcmAttachment?testResultAttachmentUri=${encodeURIComponent(artifactLink)}`;
-
-            // TODO: Show the file name? Probably not worth the effort, since ADO puts the filename into the link comment,
-            // and we show the link comment right below the actual link.
-            return [`Attachment ${artifactId}`, fullURL , ''];
-        }
-        // Example: vstfs:///TestManagement/TcmTest/1
-        //   => URL in the default ADO history: http://<Host>/<collection>/<project>/_TestManagement/Runs?_a=contribution&runId=5&resultId=100000&selectedGroupBy=group-by-branch&contributionId=ms.vss-test-web.test-result-history
-        else if (artifactType === 'TcmTest') {
-            // The artifactId (in the example, the '1') is named 'testCaseReferenceId' or 'testCaseRefId' in the ADO server installation source files.
-            // The default ADO history shows mostly the same link as for 'TcmResult', except that it leads directly to the 'history' tab of the run.
-            // Not really sure how we get from the '1' given for the 'TcmTest' to the 'runId=5&resultId=100000'... There seems to be some undocumented
-            // API involved. 
-            // For now, we simply display just the testcase reference id, without a hyperlink.
-            // TODO: Improvie this.
-            return [`Testcase reference ID ${artifactId}`, '', ''];
-        }
-    }
-
-    // Unknown artifact link.
-    return undefined;
+    return parsers[artifactTool]?.[artifactType]?.(artifactLink, artifactId, currentProjectName);
 }
 
 
@@ -823,6 +492,382 @@ function SplitWithRemainder(str, separator, limit)
         result.push(lastElemsJoined);
     }
     return result;
+}
+
+
+async function ParseArtifactLinkGitCommit(artifactLink, artifactId, currentProjectName)
+{
+    // Example: vstfs:///Git/Commit/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2054d8fcd16469d4398b2c73d9da828aaed98e41
+    //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/c0d1232d-66e9-4d5e-b5a0-50366bc67991/commit/2054d8fcd16469d4398b2c73d9da828aaed98e41
+    const details = SplitArtifactIdForRouteUrl(artifactId, 3);
+    if (details.length !== 3) {
+        return undefined;
+    }
+
+    // Compare 'VersionControl/Scripts/CommitArtifact.js' and 'wit-linked-work-dropdown-content\Util\Artifact.js' in the ADO Server installation.
+    const [projectGuid, repositoryId, commitId] = details;
+
+    /*
+        "routeTemplates": [
+            "{project}/{team}/_git/{vc.GitRepositoryName}/commit/{parameters}/{reviewMode}",
+            "{project}/{team}/_git/{vc.GitRepositoryName}/commit/{parameters}",
+            "{project}/_git/{vc.GitRepositoryName}/commit/{parameters}/{reviewMode}",
+            "{project}/_git/{vc.GitRepositoryName}/commit/{parameters}",
+            "_git/{project}/commit/{parameters}/{reviewMode}",
+            "_git/{project}/commit/{parameters}"
+        ],
+    */
+    const url = await gLocationService.routeUrl(
+        'ms.vss-code-web.commit-route',
+        {
+            project: projectGuid,
+            'vc.GitRepositoryName': repositoryId,
+            parameters: commitId
+        });
+    return [commitId, url, ''];
+}
+
+
+async function ParseArtifactLinkGitRef(artifactLink, artifactId, currentProjectName)
+{
+    // Example branch: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGBmain
+    //    => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/c0d1232d-66e9-4d5e-b5a0-50366bc67991?version=GBmain
+    //       (we will use the project GUID instead of the project name)
+    // Example tag: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGTSomeTagInRepo
+    //    => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/c0d1232d-66e9-4d5e-b5a0-50366bc67991?version=GTSomeTagInRepo
+    //       (we will use the project GUID instead of the project name)
+    // Example commit: vstfs:///Git/Ref/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2FGC055a2cd8575bf236145656b4fc8559981cc690ba
+    const details = SplitArtifactIdForRouteUrl(artifactId, 3);
+    if (details.length !== 3) {
+        return undefined;
+    }
+
+    // Compare 'wit-linked-work-dropdown-content\Util\Artifact.js', constructLinkToContentFromRouteId() in 'Search\Scenarios\Shared\Utils.js' 
+    // and 'common-content\Utils\Ref.js' in the ADO Server installation.
+    // Git branches are prefixed with 'GB', git tags with 'GT', and git commits with 'GC'.
+    const [projectGuid, repositoryId, refNameWithPrefix] = details;
+    let refType;
+    if (refNameWithPrefix.indexOf('GB') === 0) {
+        refType = 'Branch';
+    }
+    else if (refNameWithPrefix.indexOf('GT') === 0) {
+        refType = 'Tag';
+    }
+    else if (refNameWithPrefix.indexOf('GC') === 0) {
+        // The ADO source files show that 'GC' is possible. However, I don't think that this type can be created via the ADO UI.
+        // The UI creates a vstfs:///Git/Commit/... url when linking to commits, not a vstfs:///Git/Ref/ url.
+        // But it is possible via the REST API (https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/update?view=azure-devops-server-rest-6.0&tabs=HTTP#add-a-link).
+        // The URL we create below does work correctly for commits. However, the 'links' tab in ADO doesn't show such links. Weird. Maybe 
+        // a leftover from earlier ADO versions?
+        refType = 'Commit';
+    }
+    else {
+        // Note: The REST API (https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/update?view=azure-devops-server-rest-6.0&tabs=HTTP#add-a-link)
+        // actually allows to create invalid links, e.g. vstfs:///Git/Ref/SomethingInvalid
+        // However, the 'links' tab in ADO doesn't show them.
+        return undefined;
+    }
+
+    const refName = refNameWithPrefix.substring(2);
+
+    /*
+        "routeTemplates": [
+            "{project}/{team}/_git/{vc.GitRepositoryName}",
+            "{project}/_git/{vc.GitRepositoryName}",
+            "_git/{project}"
+        ],
+    */
+    const url = await gLocationService.routeUrl(
+        'ms.vss-code-web.files-route-git',
+        {
+            project: projectGuid,
+            'vc.GitRepositoryName': repositoryId,
+            // The branch/tag/commit name must be appended as '?version=refNameWithPrefix' to the URL.
+            version: refNameWithPrefix
+        });
+    return [refName, url, refType];
+}
+
+
+async function ParseArtifactLinkGitPullRequest(artifactLink, artifactId, currentProjectName)
+{
+    // Example: vstfs:///Git/PullRequestId/2d63f741-0ba0-4bc6-b730-896745fab2c0%2Fc0d1232d-66e9-4d5e-b5a0-50366bc67991%2F2
+    //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_git/TestRepo/pullrequest/2?_a=overview
+    const details = SplitArtifactIdForRouteUrl(artifactId, 3);
+    if (details.length !== 3) {
+        return undefined;
+    }
+
+    // See 'VersionControl\Scripts\PullRequestArtifact.js' in the ADO Server installation.
+    const [projectGuid, repositoryId, pullRequestId] = details;
+
+    /*
+        "routeTemplates": [
+            "{project}/{team}/_git/{vc.GitRepositoryName}/pullrequest/{parameters}",
+            "{project}/_git/{vc.GitRepositoryName}/pullrequest/{parameters}",
+            "_git/{project}/pullrequest/{parameters}"
+        ],
+    */
+    const url = await gLocationService.routeUrl(
+        'ms.vss-code-web.pull-request-review-route',
+        {
+            project: projectGuid,
+            'vc.GitRepositoryName': repositoryId,
+            parameters: pullRequestId
+        });
+    return [pullRequestId, url, ''];
+}
+
+
+async function ParseArtifactLinkVersionControlChangeset(artifactLink, artifactId, currentProjectName)
+{
+    // Example: vstfs:///VersionControl/Changeset/3
+    //   => URL in the default ADO history: http://<Host>/<Collection>/TFVC%20Project/_versionControl/changeset/3
+    const changesetID = artifactId;
+
+    /*
+        "routeTemplates": [
+            "{project}/{team}/_versionControl/changeset/{parameters}/{reviewMode}",
+            "{project}/{team}/_versionControl/changeset/{parameters}",
+            "{project}/_versionControl/changeset/{parameters}/{reviewMode}",
+            "{project}/_versionControl/changeset/{parameters}"
+        ],
+    */
+    const url = await gLocationService.routeUrl(
+        'ms.vss-code-web.changeset-route',
+        {
+            // The ADO UI of work items apparently does not allow to link to TFVC changesets in other projects.
+            // However, when creating a changeset in another project, one is allowed to link it to a work item
+            // in another project. Hence, ADO does know links to changesets in other projects. Problem: The
+            // vstfs link does not contain the project containing the changeset. Changeset numbers seem, however,
+            // to be unique across all projects/repos. So the project is in principle not necessary. The ADO server
+            // source files even show that there is another routeId ('collection-changeset-route') and with a route 
+            // template '_versionControl/changeset/{parameters}' without the project . However, the resulting URL is
+            // invalid. So, to be precise, we would need to use some ADO API to query the project containing the given
+            // changeset ID. But all of this seems quite troublesome and not worth the effort: First of all,
+            // specifying an incorrect project here still results in a valid URL to the changeset (but ADO displays
+            // the changeset then in the context of the given project). Second, who is still using TFVC? Third,
+            // the few people who use TFVC will probably not use links to TFVC repos in other projects.
+            // => Simply use the current work item's project.
+            project: currentProjectName,
+            parameters: changesetID
+        });
+    return [changesetID, url, ''];
+}
+
+
+async function ParseArtifactLinkVersionControlVersionedItem(artifactLink, artifactId, currentProjectName)
+{
+    // Example link to latest version: vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSomeFile.txt%2526changesetVersion%253DT%2526deletionId%253D0
+    // Example link to changeset 4: vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSomeFile.txt%2526changesetVersion%253D4%2526deletionId%253D0
+    // Example link to latest changeset, file in a folder, filename contains a '&': vstfs:///VersionControl/VersionedItem/%252524%25252FTFVC%252520Project%25252FSome%252520folder%25252FFile%252520%252526%252520And.txt%2526changesetVersion%253DT%2526deletionId%253D0
+    //   => URL in the default ADO history: http://<Host>/<Collection>/TFVC%20Project/_versionControl?path=%24%2FTFVC%20Project%2FSome%20folder%2FFile%20%26%20And.txt&version=T&_a=contents
+    
+    // Example for file in a folder, and the filename contains a '&':
+    //   artifactId: '%252524%25252FTFVC%252520Project%25252FSome%252520folder%25252FFile%252520%252526%252520And.txt%2526changesetVersion%253DT%2526deletionId%253D0'
+    //   decodeURIComponent(artifactId): '%2524%252FTFVC%2520Project%252FSome%2520folder%252FFile%2520%2526%2520And.txt%26changesetVersion%3DT%26deletionId%3D0'
+    //   decodeURIComponent(decodeURIComponent(artifactId)): '%24%2FTFVC%20Project%2FSome%20folder%2FFile%20%26%20And.txt&changesetVersion=T&deletionId=0'
+    //   decodeURIComponent(decodeURIComponent(decodeURIComponent(artifactId))): '$/TFVC Project/Some folder/File & And.txt&changesetVersion=T&deletionId=0'
+    // => Need to extract the 'changesetVersion' after the second decodeURIComponent().
+    const twiceDecoded = decodeURIComponent(decodeURIComponent(artifactId));
+    const encodedPathAndArgumentsSplit = twiceDecoded.split('&');
+    
+    const details = SplitArtifactIdForRouteUrl(encodedPathAndArgumentsSplit[0], 3);
+    if (details.length !== 3) {
+        return undefined;
+    }
+
+    const [dollar, projectName, filepath] = details;
+    
+    let changesetVersion;
+    for (let idx = 1; idx < encodedPathAndArgumentsSplit.length; ++idx) {
+        const startStr = 'changesetVersion=';
+        if (encodedPathAndArgumentsSplit[idx].indexOf(startStr) === 0) {
+            changesetVersion = encodedPathAndArgumentsSplit[idx].substring(startStr.length);
+            break;
+        }
+    }
+
+    /*
+        "routeTemplates": [
+            "{project}/{team}/_versionControl",
+            "{project}/_versionControl"
+        ],
+    */
+    const url = await gLocationService.routeUrl(
+        'ms.vss-code-web.files-route-tfvc',
+        {
+            project: projectName,
+            path: filepath,
+            version: changesetVersion // Not in the routeTemplate, added as '?version='
+        });
+
+    // 'T' for 'tip'. Compare 'repos-common\Util\Version.js' in the ADO server installation.
+    const readableChangeset = changesetVersion === 'T' ? 'Latest changeset' : `Changeset ${changesetVersion}`;
+    return [filepath, url, readableChangeset];
+}
+
+
+async function ParseArtifactLinkBuildBuild(artifactLink, artifactId, currentProjectName)
+{
+    // Used for 'Build', 'Found in build' and 'Integrated in build' links.
+    // Example: vstfs:///Build/Build/5
+    //   => URL in the default ADO history: http://<Host>/<Collection>/2d63f741-0ba0-4bc6-b730-896745fab2c0/_build/results?buildId=5
+    const buildId = artifactId;
+
+    /*
+        "routeTemplates": [
+            "{project}/{team}/_build/results",
+            "{project}/_build/results"
+        ],
+    */
+    const url = await gLocationService.routeUrl(
+        'ms.vss-build-web.ci-results-hub-route',
+        {
+            // TODO: The build can be in a different project. Using the current project in this case results
+            // in a URL pointing to a non-existent build. The buildId is unique over all projects. So we would 
+            // need to query the project of the build.
+            project: currentProjectName,
+            buildId: buildId // Not in the routeTemplate, added as '?buildId='
+        });
+    
+    return [buildId, url, ''];
+}
+
+
+async function ParseArtifactLinkWikiWikiPage(artifactLink, artifactId, currentProjectName)
+{
+    // Example link to page 'Difficult + Pa-ge/Difficult + SubPa-ge': 
+    // vstfs:///Wiki/WikiPage/2d63f741-0ba0-4bc6-b730-896745fab2c0%2F201005d4-3f97-4766-9b82-b69c89972e64%2FDifficult%20%2B%20Pa-ge%2FDifficult%20%2B%20SubPa-ge
+    //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_wiki/wikis/201005d4-3f97-4766-9b82-b69c89972e64?pagePath=%2FDifficult+%2B+Pa%252Dge%2FDifficult+%2B+SubPa%252Dge
+    const details = SplitArtifactIdForRouteUrl(artifactId, 3);
+    if (details.length !== 3) {
+        return undefined;
+    }
+
+    // See 'page-rename-panel-content\WikiPageArtifactHelper.js' in the ADO server installation.
+    const [projectGuid, wikiId, wikiPagePath] = details;
+
+    if (!wikiPagePath) {
+        return undefined;
+    }
+
+    // The default ADO history does a few special things:
+    // - A minus '-' needs to end up as '%252D' in the final URL for ADO to be able to parse the URL 
+    //    => replace '-' with '%2D' before routeUrl().
+    // - Moreover, the default ADO history always starts the page path with '/' (encoded as '%2F'). So we do this, too.
+    // - The default ADO history also replaces a space ' ' with '+' instead of '%20' in the final encoded URL. However, we
+    //   don't do this, because we would need to do it after routeUrl() (because a '+' needs to end up as '%2B'), and ADO 
+    //   fortunately can also handle '%20' just fine (as it should, since '%20' should be a valid encoding for a space always; 
+    //   see e.g. https://stackoverflow.com/a/2678602).
+    // Also see normalizeWikiPagePath() in 'wiki-view-common-content\Utils\PathHelper.js' in the ADO server installation.
+    let normalizedPath = wikiPagePath.replace(/-/g, '%2D');
+    if (normalizedPath[0] != '/') {
+        normalizedPath = '/' + normalizedPath;
+    }
+
+    /*
+        "routeTemplates": [
+            "{project}/{team}/_wiki/wikis/{wikiIdentifier}/{pageId}/{*friendlyName}",
+            "{project}/{team}/_wiki/wikis/{*wikiIdentifier}",
+            "{project}/_wiki/wikis/{wikiIdentifier}/{pageId}/{*friendlyName}",
+            "{project}/_wiki/wikis/{*wikiIdentifier}",
+            "{project}/{team}/_wiki",
+            "{project}/_wiki"
+        ],
+    */
+    let url = await gLocationService.routeUrl(
+        'ms.vss-wiki-web.wiki-overview-nwp-route2',
+        {
+            project: projectGuid,
+            wikiIdentifier: wikiId,
+            pagePath: normalizedPath // Not in the routeTemplate, added as '?pagePath='
+        });
+
+    return [wikiPagePath, url, ''];
+}
+
+
+async function ParseArtifactRequirementsStoryboard(artifactLink, artifactId, currentProjectName)
+{
+    // According to the documentation (https://learn.microsoft.com/en-us/azure/devops/boards/queries/link-type-reference?view=azure-devops#external-link-type),
+    // a storyboard link is just a normal hyperlink. Apparently it is intended especially to link to PowerPoint files:
+    // https://learn.microsoft.com/en-us/previous-versions/azure/devops/boards/backlogs/office/storyboard-your-ideas-using-powerpoint?view=tfs-2017
+    // But this has been deprecated in ADO >= 2019. The artifact type still exists, however, and it actually allows linking to any file.
+    // Example: vstfs:///Requirements/Storyboard/https%3A%2F%2Ffile-examples.com%2Fwp-content%2Fstorage%2F2017%2F08%2Ffile_example_PPT_250kB.ppt
+    //   => URL in the default ADO history: https://file-examples.com/wp-content/storage/2017/08/file_example_PPT_250kB.ppt
+    const storyboardURL = decodeURIComponent(artifactId);
+    return [decodeURI(storyboardURL), storyboardURL, ''];
+}
+
+
+async function ParseArtifactTestManagementTcmResult(artifactLink, artifactId, currentProjectName)
+{
+    // Example: vstfs:///TestManagement/TcmResult/5.100000
+    //   => URL in the default ADO history: http://<Host>/<collection>//<Project>/_testManagement/runs/?_a=resultSummary&runId=5&resultId=100000
+    // See addResultLinkToWorkItem() in 'TestManagement\Scripts\TFS.TestManagement.js' in the ADO Server installation.
+    const details = artifactId.split('.');
+    if (details.length !== 2) {
+        return undefined;
+    }
+    const [testRunId, testResultId] = details;
+
+    /*
+        "routeTemplates": [
+            "{project}/{team}/_testManagement/runs",
+            "{project}/_testManagement/runs"
+        ],
+    */
+    let url = await gLocationService.routeUrl(
+        'ms.vss-test-web.test-runs-route',
+        {
+            project: currentProjectName, // TODO: Can the test be in a different project?
+            '_a': 'resultSummary', // Not in the routeTemplate, added as '?_a='
+            runId: testRunId, // Not in the routeTemplate, added as '?runId='
+            resultId: testResultId // Not in the routeTemplate, added as '?resultId='
+        });
+
+    // TODO: Show the test name? But need to query another API...
+    return [`Test run ${testRunId}, test result ${testResultId}`, url, ''];
+}
+
+
+async function ParseArtifactTestManagementTcmResultAttachment(artifactLink, artifactId, currentProjectName)
+{
+    // Example (linking to test attachment 'SomeFile (1).txt'): vstfs:///TestManagement/TcmResultAttachment/3.100000.3
+    //   => URL in the default ADO history: http://<Host>/<collection>/2d63f741-0ba0-4bc6-b730-896745fab2c0/_api/_testManagement/downloadTcmAttachment?testResultAttachmentUri=vstfs%3A%2F%2F%2FTestManagement%2FTcmResultAttachment%2F3.100000.4
+    // There does not seem to be a routeId or route template for result attachments. So we need to construct it ourselves.
+    // We simply use 'ms.vss-test-web.test-runs-route' to get the basic part of the URL (especially host and collection/organization). 
+    // This is basically a hack.
+    // Resulting runsURL example: http://<Host>/<collection>/<Project>/_testManagement/runs
+    // TODO: Can the test be in a different project?
+    const runsURL = await gLocationService.routeUrl('ms.vss-test-web.test-runs-route', { project: currentProjectName });
+    
+    const runsSuffix = '/_testManagement/runs';
+    if (runsURL.indexOf(runsSuffix) !== runsURL.length - runsSuffix.length) {
+        return undefined;
+    }
+
+    const baseURL = runsURL.substring(0, runsURL.length - runsSuffix.length + 1);
+    const fullURL = `${baseURL}_api/_testManagement/downloadTcmAttachment?testResultAttachmentUri=${encodeURIComponent(artifactLink)}`;
+
+    // TODO: Show the file name? Probably not worth the effort, since ADO puts the filename into the link comment,
+    // and we show the link comment right below the actual link.
+    return [`Attachment ${artifactId}`, fullURL , ''];
+}
+
+
+async function ParseArtifactTestManagementTcmTest(artifactLink, artifactId, currentProjectName)
+{
+    // Example: vstfs:///TestManagement/TcmTest/1
+    //   => URL in the default ADO history: http://<Host>/<collection>/<project>/_TestManagement/Runs?_a=contribution&runId=5&resultId=100000&selectedGroupBy=group-by-branch&contributionId=ms.vss-test-web.test-result-history
+    // The artifactId (in the example, the '1') is named 'testCaseReferenceId' or 'testCaseRefId' in the ADO server installation source files.
+    // The default ADO history shows mostly the same link as for 'TcmResult', except that it leads directly to the 'history' tab of the run.
+    // Not really sure how we get from the '1' given for the 'TcmTest' to the 'runId=5&resultId=100000'... There seems to be some undocumented
+    // API involved. 
+    // For now, we simply display just the testcase reference id, without a hyperlink.
+    // TODO: Improve this.
+    return [`Testcase reference ID ${artifactId}`, '', ''];
 }
 
 
