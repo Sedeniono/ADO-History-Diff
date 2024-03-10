@@ -407,17 +407,6 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
         return undefined;
     }
 
-    // TODO:
-    // - Retrieve information from the linked artifacts?
-    //   - Project and repository names for better display? I.e. in the history, show the project and repository names?
-    //   - Build information (succeeded, failed, deleted)?
-    //   - Information about tests?
-    // - Show small icons, as in the default ADO history?
-    // - Optimization: Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
-    // - https://learn.microsoft.com/en-us/azure/devops/boards/queries/link-type-reference?view=azure-devops#external-link-type
-    //   Go through it. Maybe some links are created automatically, but cannot be created by the user.
-    //   (_manualLinkingExclusionList?)
-
     const [, artifactTool, artifactType, artifactId] = matches;
 
     try {
