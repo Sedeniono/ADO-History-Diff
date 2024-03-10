@@ -428,10 +428,12 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
         // is run (they are filtered out in the UI in _manualLinkingExclusionList()).
         // Example: vstfs:///ReleaseManagement/ReleaseEnvironment/2d63f741-0ba0-4bc6-b730-896745fab2c0:4:4
         //   => URL in the default ADO history: http://<Host>/<Collection>/<Project>/_release?releaseId=4&_a=release-summary
-        // Problems:
+        // Problems/questions:
         // - How to parse the artifactId? '2d63f741-0ba0-4bc6-b730-896745fab2c0' is the project GUID, as in many other artifact links.
-        //   But what is '4:4'? One of them is probably the 'releaseId', but the other one? Are they always the same?
-        //   So far I couldn't find the place in the ADO server installation source files where this is built.
+        //   But what is '4:4'? One of them is probably the 'releaseId', but the other one? Googling, they are not necessarily the same,
+        //   e.g. https://stackoverflow.com/q/77282719. According to https://stackoverflow.com/q/62651418, the first one is the release ID
+        //   while the second one is an 'environment ID' (whatever that means).
+        //   So far I couldn't find the place in the ADO server installation source files where this particular vstfs string is built.
         // - How to create the URL? There are multiple possible routeId in the ADO server installation. Maybe 'release-progress-url-reroute'?
         //   But ADO itself seems to create the URL in ReleaseUrlUtils.getOldReleaseViewUrl(), not using a routeId? Moreover, there also seems 
         //   to be a 'New Releases Hub' preview feature (https://learn.microsoft.com/en-us/azure/devops/release-notes/2018/jun-19-vsts#organize-your-release-definitions-in-folders)
