@@ -320,7 +320,7 @@ async function GetUserFriendlyStringsForRelationChange(currentProjectName, relat
         return [friendlyName, value];
     }
     
-    // TODO: Haven't tested github links and remote work links types (links between organizations).
+    // TODO: Remote work links types (links between organizations).
     return ['(Unsupported link type)', '(Showing the change is not supported.)'];
 }
 
@@ -416,10 +416,24 @@ async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artif
     // - Optimization: Maybe call routeUrl() at the start of the initialization to trigger the REST request as early as possible?
     // - https://learn.microsoft.com/en-us/azure/devops/boards/queries/link-type-reference?view=azure-devops#external-link-type
     //   Go through it. Maybe some links are created automatically, but cannot be created by the user.
+    //   (_manualLinkingExclusionList?)
 
     const [, artifactTool, artifactType, artifactId] = matches;
 
     try {
+        // TODO: GitHub links are not yet supported. We simply return undefined for them.
+        // Examples:
+        //   Link to GitHub commit a39edac1f528525bcde5fe2900ff50e9c941a879: vstfs:///GitHub/Commit/3b807e19-64cc-40ec-a036-a048c812d0f1%2Fa39edac1f528525bcde5fe2900ff50e9c941a879
+        //   Link to GitHub pullrequest 2: vstfs:///GitHub/PullRequest/3b807e19-64cc-40ec-a036-a048c812d0f1%2F2
+        //   Link to GitHub issue 1, manually created: vstfs:///GitHub/Issue/3b807e19-64cc-40ec-a036-a048c812d0f1%2F1
+        //   Link to GitHub issue 3, created by Azure Board bot on GitHub (note '%2f' instead of '%2F' as separator): vstfs:///GitHub/Issue/3b807e19-64cc-40ec-a036-a048c812d0f1%2f3
+        // In these examples, the '3b807e19-64cc-40ec-a036-a048c812d0f1' is some ID identifying the GitHub repository.
+        // Unfortunately, there is no public REST API available to convert the vstfs links to usable URLs. At least for ADO Services,
+        // the private API is 'https://dev.azure.com/<organization>/_apis/Contribution/HierarchyQuery/project/<projectGUID>' using POST,
+        // where the payload contains 'contributionIds : ["ms.vss-work-web.github-link-data-provider"]'.
+        // So, to support GitHub links properly, we would need to use that undocumented API. But Microsoft might change it at any time...
+        // Also I haven't checked whether that private endpoint is the same for ADO Server 2019, 2020 and 2022.
+
         const parsers = {
             Git: {
                 Commit: ParseArtifactLinkGitCommit,
