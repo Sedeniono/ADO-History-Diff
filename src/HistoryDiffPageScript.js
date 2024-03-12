@@ -45,12 +45,17 @@ function EscapeHtml(string) {
     });
 }
 
+// Escapes some text so that it gets interpreted as normal text in a regex.
+function EscapeForRegex(str)
+{
+    // https://stackoverflow.com/a/67227435
+    return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+}
 
-const gStyleRegex = /\<style\>.*?\<\/style\>/gms;
 
 function RemoveStyle(string) 
 {
-    return String(string).replace(gStyleRegex, '');
+    return String(string).replace(/\<style\>.*?\<\/style\>/gms, '');
 }
 
 
@@ -501,12 +506,14 @@ function SplitArtifactIdForRouteUrl(artifactId, numComponents)
 // Like the standard String.split() function, it returns an array with at most 'limit' elements.
 // But if the given 'str' contains more separators that specified by 'limit', the last array element
 // contains all the remaining string without being split.
+// Additionally, the split happens case-insensitive.
 function SplitWithRemainder(str, separator, limit)
 {
     if (limit === 0) {
         return [];
     }
-    const fullySplit = str.split(separator);
+    // 'i' for case-insensitive. https://stackoverflow.com/a/67227435
+    const fullySplit = str.split(new RegExp(EscapeForRegex(separator), 'i'));
     if (!limit) {
         return fullySplit;
     }
