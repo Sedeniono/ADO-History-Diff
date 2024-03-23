@@ -356,6 +356,9 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
 }
 
 
+// Using 'import' instead of 'require' doesn't work with these two dependencies. The SDK gets bundled
+// by webpack twice, which causes an error because the SDK has side effects.
+// See https://stackoverflow.com/q/78210363/3740047.
 require(['azure-devops-extension-sdk', 
          'azure-devops-extension-api'
         ], 
