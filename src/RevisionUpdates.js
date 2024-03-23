@@ -53,6 +53,9 @@ const hiddenFields = [
     // These are the comments on work items, but the updates reported by ADO to the field are unusable.
     // We get the history of comments separately. So filter out the 'System.History' field itself.
     'System.History',
+    // The stack rank value itself is meaningless to the user. It is only meaningful in relation to other
+    // work items, which we don't show in the history. So hide it.
+    'Microsoft.VSTS.Common.StackRank',
     // Further things that seem unnecessary.
     'Microsoft.VSTS.Common.StateChangeDate', 'System.IsDeleted', 'System.CommentCount', 'System.PersonId', 'System.AuthorizedAs',
     'System.ChangedBy', 'System.CreatedBy'
