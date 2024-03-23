@@ -4,8 +4,8 @@
 // @ts-check
 
 
-import { gWorkItemRESTClient } from "./Globals";
-import { DiffHtmlText } from "./Utils";
+import { gWorkItemRESTClient } from './Globals';
+import { DiffHtmlText } from './Utils';
 
 
 // Artificial id used for comment updates.

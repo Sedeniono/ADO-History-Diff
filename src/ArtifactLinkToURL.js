@@ -3,7 +3,7 @@
 
 // @ts-check
 
-import { gLocationService } from "./Globals";
+import { gLocationService } from './Globals';
 
 
 export async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artifactLink)
