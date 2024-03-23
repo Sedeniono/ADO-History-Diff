@@ -3,11 +3,20 @@
 
 // @ts-check
 
-import { TryGetHTMLLinkNameAndUrlForArtifactLink } from "./ArtifactLinkToURL";
-import { gFieldTypeEnum, gWorkItemRESTClient } from "./Globals";
-import { EscapeHtml, FormatDate, GetIdentityAvatarHtml, GetIdentityName, RemoveStyle } from "./Utils";
+import { TryGetHTMLLinkNameAndUrlForArtifactLink } from './ArtifactLinkToURL';
+import { gWorkItemRESTClient } from './Globals';
+import { EscapeHtml, FormatDate, GetIdentityAvatarHtml, GetIdentityName, RemoveStyle } from './Utils';
 // @ts-ignore
 import * as htmldiff from 'node-htmldiff';
+
+// An enum that holds the known field types. E.g. FieldTypeEnum.Html === 4.
+// It is basically https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/fieldtype,
+// except that this documentation is incorrect (it shows the wrong numerical ids). (Apparently, the enum 'FieldType'
+// exists several times in the API with different definitions, and the tool that creates the documentation cannot handle it?) 
+// The correct one is this:
+// https://github.com/microsoft/azure-devops-node-api/blob/fa534aef7d79ab4a30ae2b8823654795b6eed1aa/api/interfaces/WorkItemTrackingInterfaces.ts#L460
+import { FieldType as FieldTypeEnum } from 'azure-devops-extension-api/WorkItemTracking';
+
 
 
 export async function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap, currentProjectName) 
@@ -243,7 +252,7 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
     }
 
     if (fieldReferenceName === 'Microsoft.VSTS.TCM.Steps') {
-        // The steps of a test case show up as a field of type 'gFieldTypeEnum.Html', which is lie. It does not contain valid html that 
+        // The steps of a test case show up as a field of type 'FieldTypeEnum.Html', which is lie. It does not contain valid html that 
         // a browser can display. It seems to be simply XML, with each individual step description being (escaped) html.
         // TODO: Can we still show a meaningful proper diff?
         // https://devblogs.microsoft.com/devops/how-to-use-test-step-using-rest-client-helper/
@@ -254,7 +263,7 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
     else if (fieldReferenceName === 'Microsoft.VSTS.TCM.Parameters') {
         // This field is used in 'shared parameter set' work items, which are work items that can be referenced by test case items.
         // https://learn.microsoft.com/en-us/azure/devops/test/repeat-test-with-different-data?view=azure-devops#share-parameters-between-test-cases
-        // The field type is reported as 'gFieldTypeEnum.Html', although in reality it is some general XML. For example:
+        // The field type is reported as 'FieldTypeEnum.Html', although in reality it is some general XML. For example:
         //    "<parameterSet><paramNames><param>someVar</param><param>var</param></paramNames><paramData lastId=\"1\"><dataRow id=\"1\"><kvp key=\"someVar\" value=\"test value\"/><kvp key=\"var\" value=\"another value\"/></dataRow></paramData></parameterSet>"
         return '(Showing the diff of a shared parameter set is not supported.)';
     }
@@ -265,11 +274,11 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         return '(Showing the diff of parameter values is not supported.)';
     }
 
-    // Azure DevOps (at least 2019) reports identities (e.g. the 'System.CreatedBy' field) as 'gFieldTypeEnum.String', but the 'isIdentity' flag is set.
+    // Azure DevOps (at least 2019) reports identities (e.g. the 'System.CreatedBy' field) as 'FieldTypeEnum.String', but the 'isIdentity' flag is set.
     // An identity is probably an 'IdentityReference': https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/identityreference
     let fieldType = fieldsPropertiesMap?.[fieldReferenceName]?.type;
     if (fieldsPropertiesMap?.[fieldReferenceName]?.isIdentity) {
-        fieldType = gFieldTypeEnum.Identity;
+        fieldType = FieldTypeEnum.Identity;
     }
     // Note for picklists: It seems that they are used only for user-added fields. They appear as combo boxes.
     // Similar to identities, picklists are also identified via an additional flag in the 'WorkItemField' interface. So PicklistString,
@@ -279,7 +288,7 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
     // simply treat picklists as a string/integer/double.
 
     switch (fieldType) {
-        case gFieldTypeEnum.Html:
+        case FieldTypeEnum.Html:
             return DiffHtmlText(value.oldValue, value.newValue);
             
         // 'History' means the comments. Unfortunately, they are quite special: When a user adds a new comment, it shows
@@ -290,11 +299,11 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         // => We actually filter out the 'System.History' entry somewhere else. I think that apart from 'System.History',
         // no other field can use the 'History' field type. Hence, this code here is probably dead. We have dedicated REST
         // API requests somewhere else to get the history of comments.
-        case gFieldTypeEnum.History:
+        case FieldTypeEnum.History:
             return value.hasOwnProperty('newValue') ? `<ins class="diffCls">${RemoveStyle(value.newValue)}</ins>` : '';
 
-        case gFieldTypeEnum.String:
-        case gFieldTypeEnum.PlainText:
+        case FieldTypeEnum.String:
+        case FieldTypeEnum.PlainText:
         {
             // We simply feed htmldiff the values with escaped special characters, meaning that htmldiff should not see any HTML elements.
             // Using a different diff-library (jsdiff or diff-match-patch) is not worth the additional dependency, since the only work item
@@ -309,27 +318,27 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
             return diff;
         }
 
-        case gFieldTypeEnum.Integer:
-        case gFieldTypeEnum.PicklistInteger: // See note above: Shouldn't appear, but if it does, can be treated as integer.
-        case gFieldTypeEnum.Double:
-        case gFieldTypeEnum.PicklistDouble: // See note above: Shouldn't appear, but if it does, can be treated as double.
-        case gFieldTypeEnum.PicklistString: // See note above: Shouldn't appear, but if it does, can be treated as string.
-        case gFieldTypeEnum.Guid: // Guids are given as plain strings.
-        case gFieldTypeEnum.Boolean:
-        case gFieldTypeEnum.TreePath:
+        case FieldTypeEnum.Integer:
+        case FieldTypeEnum.PicklistInteger: // See note above: Shouldn't appear, but if it does, can be treated as integer.
+        case FieldTypeEnum.Double:
+        case FieldTypeEnum.PicklistDouble: // See note above: Shouldn't appear, but if it does, can be treated as double.
+        case FieldTypeEnum.PicklistString: // See note above: Shouldn't appear, but if it does, can be treated as string.
+        case FieldTypeEnum.Guid: // Guids are given as plain strings.
+        case FieldTypeEnum.Boolean:
+        case FieldTypeEnum.TreePath:
             return (value.hasOwnProperty('oldValue') ? `<del class="diffCls">${EscapeHtml(value.oldValue)}</del>` : '') 
                 + (value.hasOwnProperty('newValue') ? `<ins class="diffCls">${EscapeHtml(value.newValue)}</ins>` : '');
 
-        case gFieldTypeEnum.DateTime:
+        case FieldTypeEnum.DateTime:
             return (value.hasOwnProperty('oldValue') ? `<del class="diffCls">${FormatDate(value.oldValue)}</del>` : '') 
                 + (value.hasOwnProperty('newValue') ? `<ins class="diffCls">${FormatDate(value.newValue)}</ins>` : '');
 
-        case gFieldTypeEnum.Identity:
+        case FieldTypeEnum.Identity:
             return (value.hasOwnProperty('oldValue') ? `<del class="diffCls">${FormatIdentityForFieldDiff(value.oldValue)}</del>` : '') 
                 + (value.hasOwnProperty('newValue') ? `<ins class="diffCls">${FormatIdentityForFieldDiff(value.newValue)}</ins>` : '');
 
         default:
-            console.log(`HistoryDiff: Unknown field type '${fieldType}' (${gFieldTypeEnum?.[fieldType]}), oldValueType: ${typeof value.oldValue}, newValueType: ${typeof value.newValue}`);
+            console.log(`HistoryDiff: Unknown field type '${fieldType}' (${FieldTypeEnum?.[fieldType]}), oldValueType: ${typeof value.oldValue}, newValueType: ${typeof value.newValue}`);
             return undefined;
     }
 }
