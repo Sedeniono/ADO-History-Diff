@@ -24,6 +24,10 @@
             /* Note: Will be changed dynamically if dark mode is detected; see comment in IsDarkModeActive(). */
             background-color: #d4fcbc;
         }
+        li > * {
+            /* Because of the inline-block for <ins> and <del>, we need to explicitly align the bullets/numbers of lists to the top */
+            vertical-align: text-top;
+        }
         table.diffCls {
             border-collapse: collapse;
         }
