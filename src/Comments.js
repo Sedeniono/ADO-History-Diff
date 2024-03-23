@@ -28,8 +28,8 @@ export function GetTableInfosForEachComment(comments)
             const curVersion = comment.allUpdates[idx];
             const prevVersion = idx !== 0 ? comment.allUpdates[idx - 1] : null;
 
-            const curText = curVersion?.isDeleted ? '' : curVersion?.text;
-            const prevText = prevVersion?.isDeleted ? '' : prevVersion?.text;
+            const curText = curVersion?.isDeleted ? '' : (curVersion?.renderedText ?? curVersion?.text);
+            const prevText = prevVersion?.isDeleted ? '' : (prevVersion?.renderedText ?? prevVersion?.text);
             const textChange = DiffHtmlText(prevText, curText);
 
             let action = '';
