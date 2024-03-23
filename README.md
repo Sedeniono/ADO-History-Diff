@@ -255,7 +255,7 @@ Apart from the import/export steps, the steps of modifying the actual XML file s
 * Show pure formatting changes. Maybe fork and try to improve [htmldiff](https://www.npmjs.com/package/node-htmldiff). Or possibly better, use Wikipedia's [VisualDiff](https://www.mediawiki.org/wiki/Special:MyLanguage/visual_diffs) from the [VisualEditor](https://github.com/wikimedia/mediawiki-extensions-VisualEditor) (but has more dependencies). Or port [DaisyDiff](https://github.com/DaisyDiff/DaisyDiff).
 * Once [markdown is available in Azure DevOps work items](https://developercommunity.visualstudio.com/t/add-markdown-support-in-discussions/365826), support it.
 * Support GitHub and remote work item links.
-* Support the test case steps field (`Microsoft.VSTS.TCM.Steps`).
+* Support test cases (`Microsoft.VSTS.TCM.Steps`, `Microsoft.VSTS.TCM.LocalDataSource`, `Microsoft.VSTS.TCM.Parameters`).
 * Show only the context of a change in longer descriptions (optionally).
 * Localization of hardcoded strings.
 
