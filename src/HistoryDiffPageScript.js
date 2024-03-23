@@ -319,7 +319,7 @@ function CreateWorkItemPageEvents()
 // encountered. For example, if there are two successive bugs, the user shows the history diff on the first bug,
 // then moves on to the next bug, ADO will show immediately our history diff tab, but this function is not called
 // again. Instead, the 'onUnloaded' and 'onLoaded' events are called (see CreateWorkItemPageEvents()).
-async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, adoCommonServices, htmldiff)
+async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, adoCommonServices)
 {
     // Called by the ADO API after the client received and applied the ADO theme. Also called when the user changes the theme
     // while our extension is already loaded. The event doesn't seem to be documented, but it can be seen in the source:
@@ -347,7 +347,7 @@ async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, adoCommon
     gAdoAPI = adoAPI;
     gWorkItemFormServiceId = workItemTracking.WorkItemTrackingServiceIds.WorkItemFormService;
     
-    await InitSharedGlobals(adoSDK, adoAPI, adoCommonServices, workItemTracking, htmldiff);
+    await InitSharedGlobals(adoSDK, adoAPI, adoCommonServices, workItemTracking);
 
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.
     // This causes ADO to show the 'spinning loading indicator' until we are ready.
@@ -360,11 +360,10 @@ async function InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, adoCommon
 require(['azure-devops-extension-sdk', 
          'azure-devops-extension-api', 
          'azure-devops-extension-api/WorkItemTracking',
-         'azure-devops-extension-api/Common/CommonServices',
-         'node-htmldiff'
+         'azure-devops-extension-api/Common/CommonServices'
         ], 
         // @ts-ignore
-        function (adoSDK, adoAPI, workItemTracking, adoCommonServices, htmldiff) {
-            InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, adoCommonServices, htmldiff);
+        function (adoSDK, adoAPI, workItemTracking, adoCommonServices) {
+            InitializeHistoryDiff(adoSDK, adoAPI, workItemTracking, adoCommonServices);
         }
 );

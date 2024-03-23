@@ -4,8 +4,10 @@
 // @ts-check
 
 import { TryGetHTMLLinkNameAndUrlForArtifactLink } from "./ArtifactLinkToURL";
-import { gHtmlDiff, gFieldTypeEnum, gWorkItemRESTClient } from "./Globals";
+import { gFieldTypeEnum, gWorkItemRESTClient } from "./Globals";
 import { EscapeHtml, FormatDate, GetIdentityAvatarHtml, GetIdentityName, RemoveStyle } from "./Utils";
+// @ts-ignore
+import * as htmldiff from 'node-htmldiff';
 
 
 export async function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap, currentProjectName) 
@@ -230,7 +232,7 @@ function DiffHtmlText(oldValue, newValue)
     // <style> tag when loading a work item in the UI.
     const oldValueFixed = RemoveStyle(oldValue ?? '');
     const newValueFixed = RemoveStyle(newValue ?? '');
-    return gHtmlDiff(oldValueFixed, newValueFixed, 'diffCls'); 
+    return htmldiff(oldValueFixed, newValueFixed, 'diffCls'); 
 }
 
 
@@ -303,7 +305,7 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
             const newLineRegex = /(?:\r\n|\r|\n)/g;
             const oldValue = EscapeHtml(value.oldValue ?? '').replace(newLineRegex, '<br>');
             const newValue = EscapeHtml(value.newValue ?? '').replace(newLineRegex, '<br>');
-            const diff = gHtmlDiff(oldValue, newValue, 'diffCls');
+            const diff = htmldiff(oldValue, newValue, 'diffCls');
             return diff;
         }
 

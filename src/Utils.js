@@ -3,7 +3,9 @@
 
 // @ts-check
 
-import { gHtmlDiff } from "./Globals";
+
+// @ts-ignore
+import * as htmldiff from 'node-htmldiff';
 
 
 const gReplaceEntityMap = {
@@ -68,5 +70,5 @@ export function DiffHtmlText(oldValue, newValue)
     // <style> tag when loading a work item in the UI.
     const oldValueFixed = RemoveStyle(oldValue ?? '');
     const newValueFixed = RemoveStyle(newValue ?? '');
-    return gHtmlDiff(oldValueFixed, newValueFixed, 'diffCls'); 
+    return htmldiff(oldValueFixed, newValueFixed, 'diffCls'); 
 }

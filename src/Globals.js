@@ -3,8 +3,6 @@
 
 // @ts-check
 
-export var gHtmlDiff;
-
 // WorkItemTrackingRestClient: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient
 export var gWorkItemRESTClient;
 
@@ -20,9 +18,8 @@ export var gLocationService;
 export var gFieldTypeEnum;
 
 
-export async function InitSharedGlobals(adoSDK, adoAPI, adoCommonServices, workItemTracking, htmldiff)
+export async function InitSharedGlobals(adoSDK, adoAPI, adoCommonServices, workItemTracking)
 {
-    gHtmlDiff = htmldiff;
     gFieldTypeEnum = workItemTracking.FieldType;
     
     gLocationService = await adoSDK.getService(adoCommonServices.CommonServiceIds.LocationService);
