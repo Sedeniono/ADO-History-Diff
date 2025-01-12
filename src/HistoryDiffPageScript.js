@@ -5,7 +5,7 @@
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments.js';
 import { InitSharedGlobals } from './Globals.js';
-import { LoadConfiguration, SaveFieldFilterToConfig, GetFieldFilterConfig } from './Configuration.js';
+import { LoadConfiguration, SaveFieldFilterToConfig, GetFieldFilterConfig, InitializeConfigDialog } from './Configuration.js';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates.js';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace } from './Utils.js';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
@@ -371,7 +371,7 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
         LoadConfiguration(adoSDK)
     ]);
     
-
+    InitializeConfigDialog();
 
     // TODO: Improve
     const filterForm = document.getElementById("html-field-filter-form")
