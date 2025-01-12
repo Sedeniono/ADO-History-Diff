@@ -62,7 +62,15 @@ export function InitializeConfigDialog()
         throw new Error('HistoryDiff: HTML element not found.');
     }
 
-    document.getElementById("config-dialog-close")?.addEventListener(
+    document.getElementById("config-dialog-show")?.addEventListener(
+        "click", 
+        () => {
+            SetCurrentFieldFiltersInDialog(fieldFiltersTable);
+            // @ts-ignore
+            configDialog.showModal();
+    });
+
+    document.getElementById("config-dialog-ok")?.addEventListener(
         "click", 
         () => {
             SaveAllFieldFiltersFromDialog(configDialog);
@@ -71,13 +79,9 @@ export function InitializeConfigDialog()
             LoadAndSetDiffInHTMLDocument();
     });
 
-    document.getElementById("config-dialog-show")?.addEventListener(
-        "click", 
-        () => {
-            SetCurrentFieldFiltersInDialog(fieldFiltersTable);
-            // @ts-ignore
-            configDialog.showModal();
-    });
+    document.getElementById("config-dialog-cancel")?.addEventListener(
+        // @ts-ignore
+        "click", () => configDialog.close());
 
     document.getElementById("config-dialog-add-field-filter")?.addEventListener(
         "click", () => AddFieldFilterControlRowToDialog(fieldFiltersTable, ""));
