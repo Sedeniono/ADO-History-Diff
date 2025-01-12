@@ -12,6 +12,9 @@ const FIELD_FILTERS_CONFIG = "FieldFiltersTest"; // TODO: Remove "Test"
 // IExtensionDataManager: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iextensiondatamanager
 var gExtensionDataManager;
 
+// string[] array. If an element matches a row name (i.e. field name), that corresponding field is 
+// omitted from the history. The intention is so that the user can hide uninteresting fields such
+// as working logging related fields.
 var gFieldFilters;
 
 
@@ -81,6 +84,23 @@ export function InitializeConfigDialog()
 }
 
 
+export function UpdateConfigDialogFieldSuggestions(fields)
+{
+    const datalist = document.getElementById("config-dialog-suggested-fields");
+    if (!datalist) { 
+        throw new Error('HistoryDiff: HTML element not found.');
+    }
+    datalist.replaceChildren();
+    for (const field of fields) {
+        if (!IsFieldHiddenByUserConfig(field)) { // Don't suggest already hidden fields.
+            const newOption = document.createElement("option");
+            newOption.value = field;
+            datalist.appendChild(newOption);
+        }
+    }
+}
+
+
 function SaveAllFieldFiltersFromDialog(configDialog)
 {
     const allInputs = configDialog.getElementsByTagName("input");
@@ -110,6 +130,7 @@ function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
 {
     const newInput = document.createElement("input");
     newInput.setAttribute("type", "text");
+    newInput.setAttribute("list", "config-dialog-suggested-fields");
     newInput.value = filterString;
 
     const newDeleteButton = document.createElement("button");

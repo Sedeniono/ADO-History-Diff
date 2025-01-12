@@ -5,7 +5,7 @@
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
 import { InitSharedGlobals } from './Globals.js';
-import { LoadConfiguration, InitializeConfigDialog, IsFieldHiddenByUserConfig } from './Configuration';
+import { LoadConfiguration, InitializeConfigDialog, IsFieldHiddenByUserConfig, UpdateConfigDialogFieldSuggestions } from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace } from './Utils';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
@@ -164,6 +164,21 @@ export async function LoadAndSetDiffInHTMLDocument()
     FilterTablesInPlace(allUpdateTables);
     const htmlString = CreateHTMLForAllUpdates(allUpdateTables);
     GetHtmlDisplayField().innerHTML = htmlString;
+    
+    const allRowNames = GetAllRowNamesInTable(allUpdateTables);
+    UpdateConfigDialogFieldSuggestions(allRowNames);
+}
+
+
+function GetAllRowNamesInTable(allUpdateTables)
+{
+    const uniqueRowNames = new Set();
+    for (const updateInfo of allUpdateTables) {
+        for (const rowInfo of updateInfo.tableRows) {
+            uniqueRowNames.add(rowInfo.rowName);
+        }
+    }
+    return Array.from(uniqueRowNames.keys()).sort((a, b) => a.localeCompare(b));
 }
 
 
