@@ -72,3 +72,16 @@ export function DiffHtmlText(oldValue, newValue)
     const newValueFixed = RemoveStyle(newValue ?? '');
     return htmldiff(oldValueFixed, newValueFixed, 'diffCls'); 
 }
+
+
+// https://stackoverflow.com/a/56824017/3740047
+export function FilterInPlace(array, includeIfTruePredicate) 
+{
+    var iOut = 0;
+    for (var i = 0; i < array.length; ++i) {
+      if (includeIfTruePredicate(array[i])) {
+        array[iOut++] = array[i];
+      }
+    }
+    array.length = iOut;
+}
