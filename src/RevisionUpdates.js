@@ -108,7 +108,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, current
                 // It is some identifier not intended for display. So we get a better name from the API.
                 const friendlyFieldName = GetFriendlyFieldName(fieldsPropertiesMap, fieldReferenceName);
                 if (friendlyFieldName) {
-                    tableRows.push([friendlyFieldName, fieldDiff]);
+                    tableRows.push({rowName: friendlyFieldName, content: fieldDiff});
                 }
             }
         }
@@ -127,7 +127,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, current
                     if (relation.attributes?.comment) {
                         commentHtml = `<br><i>Newest link comment:</i> <ins class="diffCls">${EscapeHtml(relation.attributes.comment)}</ins>`;
                     }
-                    tableRows.push([`Link added: ${friendlyName}`, `<ins class="diffCls">${change}</ins>${commentHtml}`]);
+                    tableRows.push({rowName: `Link added: ${friendlyName}`, content: `<ins class="diffCls">${change}</ins>${commentHtml}`});
                 }
             }
         }
@@ -136,7 +136,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, current
                 const changeStrings = await GetUserFriendlyStringsForRelationChange(currentProjectName, relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
-                    tableRows.push([`Link removed: ${friendlyName}`, `<del class="diffCls">${change}</del>`]);
+                    tableRows.push({rowName: `Link removed: ${friendlyName}`, content: `<del class="diffCls">${change}</del>`});
                 }
             }                
         }
@@ -150,7 +150,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, current
                 const changeStrings = await GetUserFriendlyStringsForRelationChange(currentProjectName, relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
-                    tableRows.push([`Link updated: ${friendlyName}`, `<ins class="diffCls">${change}</ins>`]);
+                    tableRows.push({rowName: `Link updated: ${friendlyName}`, content: `<ins class="diffCls">${change}</ins>`});
                 }
             }
         }

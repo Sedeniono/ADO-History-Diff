@@ -171,7 +171,7 @@ function FilterTablesInPlace(allUpdateTables)
 {
     const fieldFilter = GetFieldFilterConfig();
     for (const updateInfo of allUpdateTables) {
-        FilterInPlace(updateInfo.tableRows, (nameAndDiff) => nameAndDiff[0] != fieldFilter);
+        FilterInPlace(updateInfo.tableRows, (nameAndDiff) => nameAndDiff.rowName != fieldFilter);
     }
     FilterInPlace(allUpdateTables, (updateInfo) => updateInfo.tableRows.length != 0);
 }
@@ -198,7 +198,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
     }
 
     // Sort alphabetically.
-    tableRows.sort((a, b) => a[0].localeCompare(b[0]));
+    tableRows.sort((a, b) => a.rowName.localeCompare(b.rowName));
 
     const changedByName = GetIdentityName(updateInfo.authorIdentity);
     const avatarHtml = GetIdentityAvatarHtml(updateInfo.authorIdentity);
@@ -207,8 +207,8 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
 
     let s = `<div class="changeHeader">${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDateStr}</i>${idStr}:</div>`;
     let tableRowsStr = '';
-    for (const [friendlyName, diff] of tableRows) {
-        tableRowsStr += `<tr class="diffCls"><td class="diffCls">${friendlyName}</td><td class="diffCls">${diff}</td></tr>`
+    for (const row of tableRows) {
+        tableRowsStr += `<tr class="diffCls"><td class="diffCls">${row.rowName}</td><td class="diffCls">${row.content}</td></tr>`
     }
     s += `<table class="diffCls"><thead class="diffCls"><tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr></thead>
         <tbody>${tableRowsStr}</tbody></table>`;
