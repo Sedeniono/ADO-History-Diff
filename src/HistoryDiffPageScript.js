@@ -3,11 +3,11 @@
 
 // @ts-check
 
-import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments.js';
+import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
 import { InitSharedGlobals } from './Globals.js';
-import { LoadConfiguration, InitializeConfigDialog, IsFieldHiddenByUserConfig } from './Configuration.js';
-import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates.js';
-import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace } from './Utils.js';
+import { LoadConfiguration, InitializeConfigDialog, IsFieldHiddenByUserConfig } from './Configuration';
+import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
+import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace } from './Utils';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
 
 

@@ -28,6 +28,14 @@ export function EscapeHtml(string) {
 }
 
 
+// Escapes some text so that it gets interpreted as normal text in a regex.
+export function EscapeForRegex(str)
+{
+    // https://stackoverflow.com/a/67227435
+    return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+}
+
+
 export function RemoveStyle(string) 
 {
     return String(string).replace(/\<style\>.*?\<\/style\>/gms, '');
@@ -93,4 +101,14 @@ export function StringsAreEqualCaseInsensitively(a, b)
     return typeof a === 'string' && typeof b === 'string'
         ? a.localeCompare(b, undefined, { sensitivity: 'accent' }) === 0
         : a === b;
+}
+
+
+// Checks if "str" matches "rule", where "rule" may contain "*" as wildcard to match any number of characters.
+// The match is case-insensitive.
+// https://stackoverflow.com/a/32402438/3740047
+export function StringsMatchCaseInsensitiveWithWildcard(str, rule)
+{  
+    const regexRule = "^" + rule.split("*").map(EscapeForRegex).join(".*") + "$";
+    return new RegExp(regexRule, "i").test(str);
 }

@@ -4,6 +4,7 @@
 // @ts-check
 
 import { gLocationService } from './Globals';
+import { EscapeForRegex } from './Utils';
 
 
 export async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName, artifactLink)
@@ -200,14 +201,6 @@ function SplitWithRemainder(str, separator, limit)
         result.push(lastElemsJoined);
     }
     return result;
-}
-
-
-// Escapes some text so that it gets interpreted as normal text in a regex.
-function EscapeForRegex(str)
-{
-    // https://stackoverflow.com/a/67227435
-    return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
 
 

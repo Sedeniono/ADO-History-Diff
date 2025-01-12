@@ -4,7 +4,7 @@
 // @ts-check
 
 import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServices';
-import { StringsAreEqualCaseInsensitively } from './Utils.js';
+import { StringsMatchCaseInsensitiveWithWildcard } from './Utils.js';
 import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
 const FIELD_FILTERS_CONFIG = "FieldFiltersTest"; // TODO: Remove "Test"
@@ -43,7 +43,7 @@ export function IsFieldHiddenByUserConfig(rowName)
     if (!gFieldFilters || gFieldFilters.length === 0) {
         return false;
     }
-    return gFieldFilters.some(filteredField => StringsAreEqualCaseInsensitively(filteredField, rowName));
+    return gFieldFilters.some(filteredField => StringsMatchCaseInsensitiveWithWildcard(rowName, filteredField));
 }
 
 
