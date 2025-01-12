@@ -85,3 +85,12 @@ export function FilterInPlace(array, includeIfTruePredicate)
     }
     array.length = iOut;
 }
+
+
+// https://stackoverflow.com/a/2140723/3740047
+export function StringsAreEqualCaseInsensitively(a, b)
+{    
+    return typeof a === 'string' && typeof b === 'string'
+        ? a.localeCompare(b, undefined, { sensitivity: 'accent' }) === 0
+        : a === b;
+}

@@ -4,13 +4,14 @@
 // @ts-check
 
 import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServices';
+import { StringsAreEqualCaseInsensitively } from './Utils.js';
 
-const FIELD_FILTER_CONFIG = "FieldFilterTest";
+const FIELD_FILTERS_CONFIG = "FieldFiltersTest"; // TODO: Remove "Test"
 
 // IExtensionDataManager: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iextensiondatamanager
 var gExtensionDataManager;
 
-var gFieldFilter;
+var gFieldFilters;
 
 
 export async function LoadConfiguration(adoSDK)
@@ -23,21 +24,25 @@ export async function LoadConfiguration(adoSDK)
     ]);
     
     // https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage?view=azure-devops-2020
+    // The data is stored on the server per user.
     gExtensionDataManager = await extensionDataService.getExtensionDataManager(extensionContext.id, accessToken);
-    gFieldFilter = await gExtensionDataManager.getValue(FIELD_FILTER_CONFIG, {scopeType: "User", defaultValue: ""});
+    gFieldFilters = await gExtensionDataManager.getValue(FIELD_FILTERS_CONFIG, {scopeType: "User", defaultValue: ""});
 }
 
 
-export async function SaveFieldFilterToConfig(newFieldFilter)
+export async function SaveFieldFiltersToConfig(newFieldFilters)
 {
-    gFieldFilter = newFieldFilter;
-    gExtensionDataManager.setValue(FIELD_FILTER_CONFIG, newFieldFilter, {scopeType: "User"})
+    gFieldFilters = newFieldFilters;
+    gExtensionDataManager.setValue(FIELD_FILTERS_CONFIG, newFieldFilters, {scopeType: "User"})
 }
 
 
-export function GetFieldFilterConfig()
+export function IsFieldHiddenByUserConfig(rowName)
 {
-    return gFieldFilter;
+    if (!gFieldFilters || gFieldFilters.length === 0) {
+        return false;
+    }
+    return gFieldFilters.some(filteredField => StringsAreEqualCaseInsensitively(filteredField, rowName));
 }
 
 
@@ -56,35 +61,58 @@ export function InitializeConfigDialog()
     document.getElementById("config-dialog-close")?.addEventListener(
         "click", 
         () => {
+            SaveAllFieldFiltersFromDialog(configDialog);
             // @ts-ignore
             configDialog.close();
-            const allInputs = configDialog.getElementsByTagName("input");
-            let concat = "";
-            for (const input of allInputs) {
-                if (input.type === "text") {
-                    concat += input.value;
-                }
-            }
-            // TODO Do something with concat
-            console.log("TEST DIALOG: " + concat);
-        });
+    });
 
     document.getElementById("config-dialog-show")?.addEventListener(
-        // @ts-ignore
-        "click", () => configDialog.showModal());
+        "click", 
+        () => {
+            SetCurrentFieldFiltersInDialog(fieldFiltersTable);
+            // @ts-ignore
+            configDialog.showModal();
+    });
 
     document.getElementById("config-dialog-add-field-filter")?.addEventListener(
-        "click", () => AddFieldFilterControlRowToDialog(fieldFiltersTable));
+        "click", () => AddFieldFilterControlRowToDialog(fieldFiltersTable, ""));
 }
 
 
-function AddFieldFilterControlRowToDialog(fieldFiltersTable)
+function SaveAllFieldFiltersFromDialog(configDialog)
+{
+    const allInputs = configDialog.getElementsByTagName("input");
+    let filters = [];
+    for (const inputCtrl of allInputs) {
+        if (inputCtrl.type === "text" && inputCtrl.value != null && inputCtrl.value.trim().length !== 0) {
+            filters.push(inputCtrl.value);
+        }
+    }
+    console.log(`Filters: ${filters}`);
+    SaveFieldFiltersToConfig(filters);
+}
+
+
+function SetCurrentFieldFiltersInDialog(fieldFiltersTable)
+{
+    fieldFiltersTable.replaceChildren();
+    if (gFieldFilters) {
+        for (const filter of gFieldFilters) {
+            AddFieldFilterControlRowToDialog(fieldFiltersTable, filter);
+        }
+    }
+}
+
+
+function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
 {
     const newInput = document.createElement("input");
     newInput.setAttribute("type", "text");
+    newInput.value = filterString;
+
     const newDeleteButton = document.createElement("button");
     newDeleteButton.setAttribute("style", "user-select: none");
-    newDeleteButton.innerHTML = "❌";
+    newDeleteButton.textContent = "❌";
     
     const newRow = document.createElement("tr");
     newRow.appendChild(document.createElement("td")).appendChild(newInput);

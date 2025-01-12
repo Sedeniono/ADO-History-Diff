@@ -5,7 +5,7 @@
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments.js';
 import { InitSharedGlobals } from './Globals.js';
-import { LoadConfiguration, SaveFieldFilterToConfig, GetFieldFilterConfig, InitializeConfigDialog } from './Configuration.js';
+import { LoadConfiguration, InitializeConfigDialog, IsFieldHiddenByUserConfig } from './Configuration.js';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates.js';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace } from './Utils.js';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
@@ -169,9 +169,8 @@ async function LoadAndSetDiffInHTMLDocument()
 
 function FilterTablesInPlace(allUpdateTables)
 {
-    const fieldFilter = GetFieldFilterConfig();
     for (const updateInfo of allUpdateTables) {
-        FilterInPlace(updateInfo.tableRows, (nameAndDiff) => nameAndDiff.rowName != fieldFilter);
+        FilterInPlace(updateInfo.tableRows, (nameAndDiff) => !IsFieldHiddenByUserConfig(nameAndDiff.rowName));
     }
     FilterInPlace(allUpdateTables, (updateInfo) => updateInfo.tableRows.length != 0);
 }
@@ -325,14 +324,6 @@ function CreateWorkItemPageEvents()
 }
 
 
-function OnFilterSubmit(event)
-{
-    // TODO: Improve
-    const value = document.getElementById("html-field-filter").value;
-    SaveFieldFilterToConfig(value);
-}
-
-
 // Called when the user opens the new 'History' tab (not called when simply opening a work item, i.e. called
 // lazily when actually required). Note that in queries the user can move up and down through the found items,
 // and there this function gets called only once for every new work item type (bug, user story, task, etc.)
@@ -372,13 +363,6 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
     ]);
     
     InitializeConfigDialog();
-
-    // TODO: Improve
-    const filterForm = document.getElementById("html-field-filter-form")
-    filterForm?.addEventListener("submit", OnFilterSubmit);
-    document.getElementById("html-field-filter").value = GetFieldFilterConfig();
-
-
 
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.
     // This causes ADO to show the 'spinning loading indicator' until we are ready.
