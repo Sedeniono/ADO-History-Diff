@@ -5,6 +5,7 @@
 
 import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServices';
 import { StringsAreEqualCaseInsensitively } from './Utils.js';
+import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
 const FIELD_FILTERS_CONFIG = "FieldFiltersTest"; // TODO: Remove "Test"
 
@@ -64,6 +65,7 @@ export function InitializeConfigDialog()
             SaveAllFieldFiltersFromDialog(configDialog);
             // @ts-ignore
             configDialog.close();
+            LoadAndSetDiffInHTMLDocument();
     });
 
     document.getElementById("config-dialog-show")?.addEventListener(

@@ -137,7 +137,7 @@ async function GetProjectName()
 }
 
 
-async function LoadAndSetDiffInHTMLDocument()
+export async function LoadAndSetDiffInHTMLDocument()
 {
     SetHtmlToLoading();
 
