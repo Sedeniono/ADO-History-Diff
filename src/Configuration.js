@@ -154,6 +154,7 @@ function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
     const newInput = document.createElement("input");
     newInput.setAttribute("type", "text");
     newInput.setAttribute("list", "config-dialog-suggested-fields");
+    newInput.setAttribute("size", "30");
     newInput.value = filterString;
 
     const newDeleteButton = document.createElement("button");

@@ -81,10 +81,10 @@
 <body>
     <button id="config-dialog-show" style="position: absolute; top: 15px; right: 10px">Filters</button>
     <dialog id="config-dialog" style="margin: 0; left: 8px; top: 8px">
-        Do not show entries matching:
+        <b>Hide fields matching any of:</b><br>
+        (case-insensitive; * means any characters)
         <br>
-        <table id="config-dialog-field-filters-table" style="border-spacing: 0"></table>
-        <br>
+        <table id="config-dialog-field-filters-table" style="border-spacing: 0; margin-top: 5px; margin-bottom: 5px"></table>
         <datalist id="config-dialog-suggested-fields"></datalist>
         <button id="config-dialog-add-field-filter" style="user-select: none">Add filter</button>
         <div style="float:right">
