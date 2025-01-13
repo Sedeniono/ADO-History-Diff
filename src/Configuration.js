@@ -114,7 +114,6 @@ function SaveAllFieldFiltersFromDialog(configDialog)
             filters.push(inputCtrl.value);
         }
     }
-    console.log(`Filters: ${filters}`);
     SaveFieldFiltersToConfig(filters);
 }
 
