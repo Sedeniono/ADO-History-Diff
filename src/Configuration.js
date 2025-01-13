@@ -50,6 +50,23 @@ export function IsFieldHiddenByUserConfig(rowName)
 }
 
 
+function GetOpenFilterConfigButton()
+{
+    const button = document.getElementById("config-dialog-show");
+    if (!button) {
+        throw new Error('HistoryDiff: HTML element not found.');
+    }
+    return button;
+}
+
+
+function UpdateFilterButton()
+{
+    const numFilters = gFieldFilters ? gFieldFilters.length : 0;
+    GetOpenFilterConfigButton().textContent = `Filters (${numFilters} active)`;
+}
+
+
 export function InitializeConfigDialog()
 {
     const configDialog = document.getElementById("config-dialog");
@@ -62,7 +79,7 @@ export function InitializeConfigDialog()
         throw new Error('HistoryDiff: HTML element not found.');
     }
 
-    document.getElementById("config-dialog-show")?.addEventListener(
+    GetOpenFilterConfigButton().addEventListener(
         "click", 
         () => {
             SetCurrentFieldFiltersInDialog(fieldFiltersTable);
@@ -70,10 +87,13 @@ export function InitializeConfigDialog()
             configDialog.showModal();
     });
 
+    UpdateFilterButton();
+
     document.getElementById("config-dialog-ok")?.addEventListener(
         "click", 
         () => {
             SaveAllFieldFiltersFromDialog(configDialog);
+            UpdateFilterButton();
             // @ts-ignore
             configDialog.close();
             LoadAndSetDiffInHTMLDocument();

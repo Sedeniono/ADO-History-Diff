@@ -165,6 +165,8 @@ export async function LoadAndSetDiffInHTMLDocument()
     const htmlString = CreateHTMLForAllUpdates(allUpdateTables);
     GetHtmlDisplayField().innerHTML = htmlString;
     
+    // To make it easier for the user to enter new filters, add the rows as datalist
+    // to the dialog.
     const allRowNames = GetAllRowNamesInTable(allUpdateTables);
     UpdateConfigDialogFieldSuggestions(allRowNames);
 }

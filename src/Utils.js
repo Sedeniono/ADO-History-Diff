@@ -42,7 +42,6 @@ export function RemoveStyle(string)
 }
 
 
-
 export function FormatDate(date)
 {
     const dateFormatOptions = {
@@ -85,8 +84,8 @@ export function DiffHtmlText(oldValue, newValue)
 // https://stackoverflow.com/a/56824017/3740047
 export function FilterInPlace(array, includeIfTruePredicate) 
 {
-    var iOut = 0;
-    for (var i = 0; i < array.length; ++i) {
+    let iOut = 0;
+    for (let i = 0; i < array.length; ++i) {
       if (includeIfTruePredicate(array[i])) {
         array[iOut++] = array[i];
       }
