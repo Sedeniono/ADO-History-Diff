@@ -63,7 +63,7 @@ function GetOpenFilterConfigButton()
 function UpdateFilterButton()
 {
     const numFilters = gFieldFilters ? gFieldFilters.length : 0;
-    GetOpenFilterConfigButton().textContent = `Filters (${numFilters} active)`;
+    GetOpenFilterConfigButton().innerHTML = `<b>Filters (${numFilters} active)</b>`;
 }
 
 
@@ -158,7 +158,7 @@ function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
     newInput.value = filterString;
 
     const newDeleteButton = document.createElement("button");
-    newDeleteButton.setAttribute("style", "user-select: none");
+    newDeleteButton.setAttribute("class", "deleteFilter");
     newDeleteButton.textContent = "❌";
     
     const newRow = document.createElement("tr");
