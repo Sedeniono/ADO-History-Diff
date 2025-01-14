@@ -15,6 +15,11 @@
             font-size: 14px;
             font-weight: 400;
         }
+        img {
+            /* If the user simply pasted an image into e.g. the description field without dragging on the scale handles,
+            it ends up with its original size in our history diff. Prevent that the image is wider than the extension's iframe. */
+            max-width:100%;
+        }
         del.diffCls {
             display: inline-block;
             text-decoration: none;
