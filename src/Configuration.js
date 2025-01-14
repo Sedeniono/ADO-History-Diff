@@ -7,7 +7,8 @@ import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServic
 import { StringsMatchCaseInsensitiveWithWildcard } from './Utils.js';
 import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
-const FIELD_FILTERS_CONFIG = "FieldFiltersTest"; // TODO: Remove "Test"
+const FIELD_FILTERS_LIST_CONFIG = "FieldFiltersTest"; // TODO: Remove "Test"
+const FIELD_FILTERS_DISABLED_CONFIG = "FieldFiltersDisabledTest";
 
 // IExtensionDataManager: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iextensiondatamanager
 var gExtensionDataManager;
@@ -16,6 +17,10 @@ var gExtensionDataManager;
 // omitted from the history. The intention is so that the user can hide uninteresting fields such
 // as working logging related fields.
 var gFieldFilters;
+
+// Boolean. If true, the filters are disabled. The intention is that the user can temporarily disable
+// the filters without having to remove then (and then re-add them later).
+var gFieldFiltersDisabled;
 
 
 export async function LoadConfiguration(adoSDK)
@@ -30,20 +35,25 @@ export async function LoadConfiguration(adoSDK)
     // https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage?view=azure-devops-2020
     // The data is stored on the server per user.
     gExtensionDataManager = await extensionDataService.getExtensionDataManager(extensionContext.id, accessToken);
-    gFieldFilters = await gExtensionDataManager.getValue(FIELD_FILTERS_CONFIG, {scopeType: "User", defaultValue: ""});
+    [gFieldFilters, gFieldFiltersDisabled] = await Promise.all([
+        await gExtensionDataManager.getValue(FIELD_FILTERS_LIST_CONFIG, {scopeType: "User", defaultValue: ""}),
+        await gExtensionDataManager.getValue(FIELD_FILTERS_DISABLED_CONFIG, {scopeType: "User", defaultValue: false})
+    ]);
 }
 
 
-export async function SaveFieldFiltersToConfig(newFieldFilters)
+function SaveFieldFiltersToConfig(newFieldFilters, fieldFiltersDisabled)
 {
     gFieldFilters = newFieldFilters;
-    gExtensionDataManager.setValue(FIELD_FILTERS_CONFIG, newFieldFilters, {scopeType: "User"})
+    gFieldFiltersDisabled = fieldFiltersDisabled;
+    gExtensionDataManager.setValue(FIELD_FILTERS_LIST_CONFIG, newFieldFilters, {scopeType: "User"});
+    gExtensionDataManager.setValue(FIELD_FILTERS_DISABLED_CONFIG, fieldFiltersDisabled, {scopeType: "User"});
 }
 
 
 export function IsFieldHiddenByUserConfig(rowName)
 {
-    if (!gFieldFilters || gFieldFilters.length === 0) {
+    if (gFieldFiltersDisabled || !gFieldFilters || gFieldFilters.length === 0) {
         return false;
     }
     return gFieldFilters.some(filteredField => StringsMatchCaseInsensitiveWithWildcard(rowName, filteredField));
@@ -60,9 +70,19 @@ function GetOpenFilterConfigButton()
 }
 
 
+function GetDisabledAllFieldFiltersCheckbox()
+{
+    const checkbox = document.getElementById("config-dialog-disable-all-field-filters");
+    if (!checkbox) {
+        throw new Error('HistoryDiff: HTML element not found.');
+    }
+    return checkbox;
+}
+
+
 function UpdateFilterButton()
 {
-    const numFilters = gFieldFilters ? gFieldFilters.length : 0;
+    const numFilters = (!gFieldFiltersDisabled && gFieldFilters) ? gFieldFilters.length : 0;
     GetOpenFilterConfigButton().innerHTML = `<b>Filters (${numFilters} active)</b>`;
 }
 
@@ -79,10 +99,14 @@ export function InitializeConfigDialog()
         throw new Error('HistoryDiff: HTML element not found.');
     }
 
+    const disabledFieldFiltersCheckbox = GetDisabledAllFieldFiltersCheckbox();
+
     GetOpenFilterConfigButton().addEventListener(
         "click", 
         () => {
             SetCurrentFieldFiltersInDialog(fieldFiltersTable);
+            // @ts-ignore
+            disabledFieldFiltersCheckbox.checked = gFieldFiltersDisabled;
             // @ts-ignore
             configDialog.showModal();
     });
@@ -134,7 +158,10 @@ function SaveAllFieldFiltersFromDialog(configDialog)
             filters.push(inputCtrl.value);
         }
     }
-    SaveFieldFiltersToConfig(filters);
+
+    // @ts-ignore
+    const disabledAll = GetDisabledAllFieldFiltersCheckbox().checked;
+    SaveFieldFiltersToConfig(filters, disabledAll);
 }
 
 

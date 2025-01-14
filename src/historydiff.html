@@ -75,6 +75,10 @@
             /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
             color: var(--communication-foreground, rgb(0, 90, 158));
         }
+
+        /* All the dialog and button/input stuff: Try to mimic the ADO style. We could also use the official dialog 
+        (https://developer.microsoft.com/en-us/azure-devops/components/dialog), but then we get a large amount of
+        additional package dependencies that don't seem to be worth it at the moment. */
         dialog {
             color: var(--text-primary-color,rgba(0, 0, 0, .9));
             background-color: var(--background-color,rgba(255, 255, 255, 1));
@@ -122,9 +126,13 @@
 <body>
     <button id="config-dialog-show" style="position: absolute; top: 15px; right: 10px"><b>Filters</b></button>
     <dialog id="config-dialog" style="margin: 0; left: 5px; top: 5px">
+        <label for="config-dialog-disable-all-field-filters" style="display: inline-block; white-space: nowrap;">
+            <span style="vertical-align: middle">Disable all field filters:</span>
+            <input id="config-dialog-disable-all-field-filters" type="checkbox" style="vertical-align: middle">
+        </label>
+        <br><br>
         <b>Hide fields matching any of:</b><br>
         (case-insensitive; * means any characters)
-        <br>
         <table id="config-dialog-field-filters-table" style="border-spacing: 0; margin-top: 5px; margin-bottom: 5px"></table>
         <datalist id="config-dialog-suggested-fields"></datalist>
         <button id="config-dialog-add-field-filter">Add filter</button>
