@@ -42,7 +42,7 @@ export async function GetTableInfosForEachRevisionUpdate(revisionUpdates, fields
 
 
 const hiddenFields = [
-    // These change in every revision.
+    // These change in every revision and thus clutter up the history without really providing useful infos.
     'System.Rev', 'System.AuthorizedDate', 'System.RevisedDate', 'System.ChangedDate', 'System.Watermark',
     // Fields that are sufficiently represented by the 'System.AreaPath' field.
     'System.AreaId', 'System.NodeName',
@@ -56,9 +56,10 @@ const hiddenFields = [
     // The stack rank value itself is meaningless to the user. It is only meaningful in relation to other
     // work items, which we don't show in the history. So hide it.
     'Microsoft.VSTS.Common.StackRank',
-    // Further things that seem unnecessary.
-    'Microsoft.VSTS.Common.StateChangeDate', 'System.IsDeleted', 'System.CommentCount', 'System.PersonId', 'System.AuthorizedAs',
-    'System.ChangedBy', 'System.CreatedBy'
+    // Info we show separately in the header of updates update.
+    'Microsoft.VSTS.Common.StateChangeDate', 'System.ChangedBy', 'System.CreatedBy',
+    // Further things that seem unnecessary
+    'System.IsDeleted', 'System.CommentCount', 'System.PersonId', 'System.AuthorizedAs'
 ];
 
 
