@@ -1,9 +1,14 @@
 # Azure DevOps History Diff <!-- omit in toc -->
 
+[![Marketplace rating](https://img.shields.io/visual-studio-marketplace/stars/Sedenion.HistoryDiff?label=Marketplace%3A%20Rating&color=green)](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff)
+[![Marketplace installs](https://img.shields.io/visual-studio-marketplace/azure-devops/installs/total/Sedenion.HistoryDiff?label=Installs)](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff)
+
 
 - [Introduction](#introduction)
 - [Basic installation and requirements](#basic-installation-and-requirements)
 - [Details about the new "History" tab](#details-about-the-new-history-tab)
+  - [Basic functionality](#basic-functionality)
+  - [Filters](#filters)
 - [On-premise installation (Azure DevOps Server)](#on-premise-installation-azure-devops-server)
   - [Uploading the extension to Azure DevOps Server](#uploading-the-extension-to-azure-devops-server)
   - [Enabling/configuring the history tab for work item types](#enablingconfiguring-the-history-tab-for-work-item-types)
@@ -16,9 +21,13 @@
 
 
 # Introduction
-The standard history tab of work items in Azure DevOps (ADO) shows only the old and new values of each field, without highlighting the actual changes within it.
-This makes spotting the difference very hard for fields that usually contain a lot of text; most prominently, the standard "Description" and "Repro Steps" fields and the comments.
-This extension adds a **new tab** to work items that shows the full history of every field, while computing an **appropriate diff** for each one.
+
+The standard history tab of work items in Azure DevOps (ADO) shows only the entire old and new values of each field, without highlighting the actual changes within it.
+This makes spotting the difference very hard for fields that usually contain a lot of text; most prominently, the standard "Description" and "Repro Steps" fields as well as the comments.
+This extension adds a **new tab** to work items that shows the full history of every field, while computing an **appropriate diff** for each one. Optionally, the user can filter out uninteresting fields (e.g. related to work logging).
+
+
+**If you like the extension, please give it a [star on GitHub](https://github.com/Sedeniono/ADO-History-Diff) and rate on the [Visual Studio marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff)!**
 
 The left image shows the default ADO history, while the right depicts the history as shown by the extension:
 Changes to the text are much easier to spot.
@@ -61,20 +70,31 @@ You can then build the vsix package yourself (`npm run build`, see above) and ve
 
 
 # Details about the new "History" tab
+
+## Basic functionality
 The extension adds a new tab called "History" on the work item form.
 It does **not** modify the existing ADO history page because this is not possible with an extension to the best of my knowledge.
 
 When opening the new "History" tab, the extension gets all previous changes of the work item and the comment history via the Azure DevOps REST API.
 For HTML-based fields (e.g. the "Description" field, comments, or custom fields of type "Text (multiple lines)"), the extension uses [htmldiff](https://www.npmjs.com/package/node-htmldiff) to compute a diff that is aware of HTML elements.
 String fields are diffed as ordinary strings (actually, using the same library, but with special characters escaped).
-For all other field types, computing a diff makes no sense and the old and new values are shown directly.
+For all other field types, computing a diff makes no sense and the entire old and new values are shown directly.
 The extension also shows the comments of new relations/links, but only the newest version of the comment text. ADO does not provide an API to query the history of relation/link comments (in contrast to the work item comments).
 
 Removed/old fragments are highlighted with a red background, new fragments with a green background.
 The extension is aware of the dark mode theme and uses appropriate colors.
 Note: Changing the theme in Azure DevOps (light to dark or vice versa) might not immediately change all colors. The page should be reloaded after changing the theme.
 
+## Filters
+Using the "Filters" button in the top right corner of the history tab, users can filter out fields that are uninteresting to them, such as work logging related fields or fields used by scripts for housekeeping purposes.
+The field names as shown in the history are matched completely by default and case-insensitively.
+Note that a `*` wildcard can be used to match any number of arbitrary characters.
+For example, `description`, `Desc*`, `*SCRIPT*` and `*tion` will all match e.g. the field `Description`.
+To make entering fields easier, the fields of the currently active work item can be selected from a dropdown (Edge and Chrome show a dropdown button directly, Firefox users need to double click or use the arrow keys to show it).
 
+The configuration dialog also allows to disable all configured filters without deleting them; the intention is to allow the user to temporarily view the full history without loosing the configured filters.
+
+All settings are stored per user on the server using [ADO's data storage facilities](https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage).
 
 
 # On-premise installation (Azure DevOps Server)
