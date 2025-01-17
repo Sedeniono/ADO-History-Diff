@@ -7,20 +7,38 @@ import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServic
 import { StringsMatchCaseInsensitiveWithWildcard } from './Utils.js';
 import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
-const FIELD_FILTERS_LIST_CONFIG = "FieldFiltersTest"; // TODO: Remove "Test"
-const FIELD_FILTERS_DISABLED_CONFIG = "FieldFiltersDisabledTest";
+const USER_CONFIG_KEY = "HistoryDiffUserConfigTest"; // TODO: Remove "Test"
 
 // IExtensionDataManager: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iextensiondatamanager
 var gExtensionDataManager;
 
-// string[] array. If an element matches a row name (i.e. field name), that corresponding field is 
-// omitted from the history. The intention is so that the user can hide uninteresting fields such
-// as working logging related fields.
-var gFieldFilters;
 
-// Boolean. If true, the filters are disabled. The intention is that the user can temporarily disable
-// the filters without having to remove then (and then re-add them later).
-var gFieldFiltersDisabled;
+// The current version the extension uses. Every time we need to break backwards compatibility, we will
+// increment it. That way we know when we read configs from an older version of the extension.
+const USER_CONFIG_VERSION = 1;
+
+
+// UserConfig constructor
+function UserConfig(fieldFilters, fieldFiltersDisabled)
+{
+    // We store some version in the config so that we can better deal with future changes to the extension
+    // that might make it necessary to brake backwards compatibility.
+    this.configVersion = USER_CONFIG_VERSION;
+    
+    // string[] array. If an element matches a row name (i.e. field name), that corresponding field is 
+    // omitted from the history. The intention is so that the user can hide uninteresting fields such
+    // as working logging related fields.
+    this.fieldFilters = fieldFilters;
+
+    // Boolean. If true, the filters are disabled. The intention is that the user can temporarily disable
+    // the filters without having to remove then (and then re-add them later).
+    this.fieldFiltersDisabled = fieldFiltersDisabled;
+}
+
+
+const DEFAULT_USER_CONFIG = new UserConfig([], false);
+
+var gUserConfig = DEFAULT_USER_CONFIG;
 
 
 export async function LoadConfiguration(adoSDK)
@@ -35,28 +53,29 @@ export async function LoadConfiguration(adoSDK)
     // https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage?view=azure-devops-2020
     // The data is stored on the server per user.
     gExtensionDataManager = await extensionDataService.getExtensionDataManager(extensionContext.id, accessToken);
-    [gFieldFilters, gFieldFiltersDisabled] = await Promise.all([
-        await gExtensionDataManager.getValue(FIELD_FILTERS_LIST_CONFIG, {scopeType: "User", defaultValue: ""}),
-        await gExtensionDataManager.getValue(FIELD_FILTERS_DISABLED_CONFIG, {scopeType: "User", defaultValue: false})
-    ]);
+    gUserConfig = await gExtensionDataManager.getValue(USER_CONFIG_KEY, {scopeType: "User", defaultValue: DEFAULT_USER_CONFIG});
 }
 
 
 function SaveFieldFiltersToConfig(newFieldFilters, fieldFiltersDisabled)
 {
-    gFieldFilters = newFieldFilters;
-    gFieldFiltersDisabled = fieldFiltersDisabled;
-    gExtensionDataManager.setValue(FIELD_FILTERS_LIST_CONFIG, newFieldFilters, {scopeType: "User"});
-    gExtensionDataManager.setValue(FIELD_FILTERS_DISABLED_CONFIG, fieldFiltersDisabled, {scopeType: "User"});
+    gUserConfig = new UserConfig(newFieldFilters, fieldFiltersDisabled);
+    gExtensionDataManager.setValue(USER_CONFIG_KEY, gUserConfig, {scopeType: "User"});
+}
+
+
+function AnyFieldFiltersEnabled()
+{
+    return gUserConfig && !gUserConfig.fieldFiltersDisabled && gUserConfig.fieldFilters && gUserConfig.fieldFilters.length >= 0;
 }
 
 
 export function IsFieldHiddenByUserConfig(rowName)
 {
-    if (gFieldFiltersDisabled || !gFieldFilters || gFieldFilters.length === 0) {
+    if (!AnyFieldFiltersEnabled()) {
         return false;
     }
-    return gFieldFilters.some(filteredField => StringsMatchCaseInsensitiveWithWildcard(rowName, filteredField));
+    return gUserConfig.fieldFilters.some(filteredField => StringsMatchCaseInsensitiveWithWildcard(rowName, filteredField));
 }
 
 
@@ -82,7 +101,7 @@ function GetDisabledAllFieldFiltersCheckbox()
 
 function UpdateFilterButton()
 {
-    const numFilters = (!gFieldFiltersDisabled && gFieldFilters) ? gFieldFilters.length : 0;
+    const numFilters = AnyFieldFiltersEnabled() ? gUserConfig.fieldFilters.length : 0;
     GetOpenFilterConfigButton().innerHTML = `<b>Filters (${numFilters} active)</b>`;
 }
 
@@ -106,7 +125,7 @@ export function InitializeConfigDialog()
         () => {
             SetCurrentFieldFiltersInDialog(fieldFiltersTable);
             // @ts-ignore
-            disabledFieldFiltersCheckbox.checked = gFieldFiltersDisabled;
+            disabledFieldFiltersCheckbox.checked = gUserConfig?.fieldFiltersDisabled;
             // @ts-ignore
             configDialog.showModal();
     });
@@ -168,8 +187,8 @@ function SaveAllFieldFiltersFromDialog(configDialog)
 function SetCurrentFieldFiltersInDialog(fieldFiltersTable)
 {
     fieldFiltersTable.replaceChildren();
-    if (gFieldFilters) {
-        for (const filter of gFieldFilters) {
+    if (gUserConfig?.fieldFilters) {
+        for (const filter of gUserConfig.fieldFilters) {
             AddFieldFilterControlRowToDialog(fieldFiltersTable, filter);
         }
     }
