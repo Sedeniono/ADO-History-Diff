@@ -54,7 +54,22 @@ export function FormatDate(date)
 
 export function GetIdentityName(identity) 
 {
-    return EscapeHtml(identity?.displayName ?? 'UNKNOWN NAME');
+    const name = identity?.displayName;
+
+    // I have seen some automatic changes to work items being done by a user called 'Microsoft.TeamFoundation.System <...>'
+    // in a ADO server instance, where '...' was some UUID. Depending on the place where that user showed up, sometimes the
+    // '<...>' part was omitted and sometimes not. E.g. the "revisedBy" property of work item updates includes it, while e.g. 
+    // "System.ChangedBy" does not contain it. Very strange. If '<...>' is present, the 'identity' also does not contain
+    // an avatar. Unfortunately, at least in the case of work item updates, we only have the "revisedBy" property as reliable
+    // source for the author of the changes; some update revisions simply contain no other property with that info. So  we 
+    // cannot simply use some other source that does not contain the '<...>'.
+    // The official ADO history tab does not show the '<...>'.
+    // Therefore: Simply strip out the '<...>' directly. And ignore that we cannot show an avatar image (in GetIdentityAvatarHtml()).
+    if (name?.startsWith('Microsoft.TeamFoundation.System <')) {
+        return 'Microsoft.TeamFoundation.System';
+    }
+
+    return EscapeHtml(name ?? 'UNKNOWN NAME');
 }
 
 
