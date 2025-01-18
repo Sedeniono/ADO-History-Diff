@@ -5,7 +5,7 @@
 
 
 import { gWorkItemRESTClient } from './Globals';
-import { DiffHtmlText } from './Utils';
+import { DiffHtmlText, EscapeHtml } from './Utils';
 import { CommentFormat } from 'azure-devops-extension-api/Comments';
 
 
@@ -174,12 +174,19 @@ function GetHtmlFromComment(comment, commentOrUpdate)
     //     - format == markdown: GetCommentsRESTRequest(), `text`
     //                           GetCommentsVersionsRESTRequest(): Never (`text` contains ACK)
     // 
-    if (comment.format === undefined || comment.format === CommentFormat.Html || commentOrUpdate.renderedText === undefined) {
-        return commentOrUpdate.text; // For html, do NOT use renderedText! See above!
+    if (comment.format === undefined || comment.format === CommentFormat.Html) {
+        // If `format` is undefined, we have an old ADO version, implying html. 
+        // Moreover, the correct html is in `text`, not in `renderedText`. See above.
+        return commentOrUpdate.text;
+    }
+    else if (commentOrUpdate.renderedText !== undefined) {
+        // Probably a markdown comment, at least in the latest comment version (might have been html in earlier
+        // versions of the comment, in which case `renderedText` is also fine; compare explanation above).
+        return commentOrUpdate.renderedText;
     }
     else {
-        // Probably a markdown comment, at least now (might have been html in earlier versions of the comment).
-        return commentOrUpdate.renderedText;
+        // We shouldn't be able to reach this code here.
+        return EscapeHtml(commentOrUpdate.text);
     }
 }
 
