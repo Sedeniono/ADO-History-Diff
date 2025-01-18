@@ -258,13 +258,13 @@ To install the extension in this case, go to the [Microsoft marketplace](https:/
 That should be everything you need to do.
 Please see [Microsoft's official installation instructions](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops) for more details.
 
-The new "History" tab can be configured as explained above in the chapter "Installation for the "Inheritance" process model".
+The new "History" tab can be configured as explained above in the chapter ['Installation for the "Inheritance" process model'](#installation-for-the-inheritance-process-model) of the on-premise installation instructions.
 
 
 ## Installation for the "Hosted XML" process model
 
 The ["Hosted XML" process model](https://learn.microsoft.com/en-us/azure/devops/reference/customize-work?view=azure-devops-2022#collection-level-process-customization) is only available for organizations that used the [data migration tool](https://www.microsoft.com/en-us/download/details.aspx?id=54274).
-The installation of the extension should be the same as for the "Inheritance" model, see above.
+The installation of the extension should be the same as for the "Inheritance" model, see [previous chapter](#installation-for-the-inheritance-process-model-1).
 However, you need to add the new "History" tab manually to the work item types by modifying their XML definition files.
 For information on how to do this, please refer to the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/hosted-xml-process-model?view=azure-devops) (especially on how to [modify](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/import-process/customize-process?view=azure-devops) and [import](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/import-process/import-process?view=azure-devops) processes).
 Apart from the import/export steps, the steps of modifying the actual XML file should be the same as for the "On-premises XML" process model outlined above.
