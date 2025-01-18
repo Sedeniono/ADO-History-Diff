@@ -1,0 +1,87 @@
+{
+    "manifestVersion": 1,
+    "id": "HistoryDiffPrivateTest",
+    "publisher": "Sedenion",
+    "version": "1.4.0.106",
+    "name": "History Diff Test",
+    "description": "Azure DevOps extension to show the history of work item fields with proper diffs.",
+    "public": false,
+    "icons": {
+        "default": "images/icon.png"
+    },
+    "categories": ["Azure Boards"],
+    "tags": [
+        "history",
+        "diff",
+        "changes",
+        "work item",
+        "work item history",
+        "work item changes"
+    ],
+    "content": {
+        "details": {
+            "path": "overview.md"
+        }
+    },
+    "links": {
+        "getstarted": {
+            "uri": "https://github.com/Sedeniono/ADO-History-Diff"
+        },
+        "support": {
+            "uri": "https://github.com/Sedeniono/ADO-History-Diff/issues"
+        },
+        "license": {
+            "uri": "https://github.com/Sedeniono/ADO-History-Diff/blob/main/LICENSE"
+        },
+        "learn": {
+            "uri": "https://github.com/Sedeniono/ADO-History-Diff"
+        }
+    },
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/Sedeniono/ADO-History-Diff"
+    },
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "demands": [
+        "api-version/5.1"
+    ],
+    "contributions": [
+        {  
+            "id": "historydiff",
+            "type": "ms.vss-work-web.work-item-form-page",
+            "description": "Tab to show the history of work item fields with proper diffs.",
+            "targets": [
+                "ms.vss-work-web.work-item-form"
+            ],
+            "properties": {
+                "name": "History Test",
+                "uri": "dist/historydiff.html"
+            } 
+        }
+    ],
+    "scopes": [ 
+        "vso.work" 
+    ],
+    "files": [
+        {
+            "path": "dist",
+            "addressable": true
+        },
+        {
+            "path": "LICENSE",
+            "addressable": true
+        },        
+        {
+            "path": "images/HistoryComparison.png",
+            "addressable": true
+        },
+        {
+            "path": "README.md",
+            "addressable": true
+        }
+    ]
+}
