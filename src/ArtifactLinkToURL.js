@@ -105,7 +105,7 @@ export async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName
         // So, to support GitHub links properly, we would need to use that undocumented API. But Microsoft might change it at any time...
         // Also I haven't checked whether that private endpoint is the same for ADO Server 2019, 2020 and 2022.
 
-        // TODO: Links of type 'Integrated in release stage' (sometimes called 'Integrated in release stage').
+        // TODO: Links of type 'Integrated in release stage'.
         // They cannot be created manually, but are created by the system when a release pipeline with enabled 'Report deployment status to Work' 
         // is run (they are filtered out in the UI in _manualLinkingExclusionList()).
         // Example: vstfs:///ReleaseManagement/ReleaseEnvironment/2d63f741-0ba0-4bc6-b730-896745fab2c0:4:4
