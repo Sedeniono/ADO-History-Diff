@@ -7,7 +7,7 @@ import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServic
 import { StringsMatchCaseInsensitiveWithWildcard } from './Utils.js';
 import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
-const USER_CONFIG_KEY = "HistoryDiffUserConfigTest"; // TODO: Remove "Test"
+const USER_CONFIG_KEY = "HistoryDiffUserConfig";
 
 // IExtensionDataManager: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iextensiondatamanager
 var gExtensionDataManager;
@@ -43,24 +43,34 @@ var gUserConfig = DEFAULT_USER_CONFIG;
 
 export async function LoadConfiguration(adoSDK)
 {
-    const extensionContext = adoSDK.getExtensionContext()
-    
-    const [accessToken, extensionDataService] = await Promise.all([
-        adoSDK.getAccessToken(),
-        adoSDK.getService(CommonServiceIds.ExtensionDataService)
-    ]);
-    
-    // https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage?view=azure-devops-2020
-    // The data is stored on the server per user.
-    gExtensionDataManager = await extensionDataService.getExtensionDataManager(extensionContext.id, accessToken);
-    gUserConfig = await gExtensionDataManager.getValue(USER_CONFIG_KEY, {scopeType: "User", defaultValue: DEFAULT_USER_CONFIG});
+    try {
+        const extensionContext = adoSDK.getExtensionContext()
+        
+        const [accessToken, extensionDataService] = await Promise.all([
+            adoSDK.getAccessToken(),
+            adoSDK.getService(CommonServiceIds.ExtensionDataService)
+        ]);
+        
+        // https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage?view=azure-devops-2020
+        // The data is stored on the server per user.
+        gExtensionDataManager = await extensionDataService.getExtensionDataManager(extensionContext.id, accessToken);
+        gUserConfig = await gExtensionDataManager.getValue(USER_CONFIG_KEY, {scopeType: "User", defaultValue: DEFAULT_USER_CONFIG});
+    }
+    catch (ex) {
+        console.log(`HistoryDiff: Exception trying to load configuration: ${ex}`);
+    }
 }
 
 
 function SaveFieldFiltersToConfig(newFieldFilters, fieldFiltersDisabled)
 {
-    gUserConfig = new UserConfig(newFieldFilters, fieldFiltersDisabled);
-    gExtensionDataManager.setValue(USER_CONFIG_KEY, gUserConfig, {scopeType: "User"});
+    try {
+        gUserConfig = new UserConfig(newFieldFilters, fieldFiltersDisabled);
+        gExtensionDataManager.setValue(USER_CONFIG_KEY, gUserConfig, {scopeType: "User"});
+    }
+    catch (ex) {
+        console.log(`HistoryDiff: Exception trying to save configuration: ${ex}`);
+    }
 }
 
 
