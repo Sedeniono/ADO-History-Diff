@@ -5,7 +5,7 @@
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
 import { InitSharedGlobals } from './Globals.js';
-import { LoadConfiguration, InitializeConfigDialog, IsFieldHiddenByUserConfig, UpdateConfigDialogFieldSuggestions } from './Configuration';
+import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions } from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace } from './Utils';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
@@ -161,7 +161,7 @@ export async function LoadAndSetDiffInHTMLDocument()
     ]);
 
     const allUpdateTables = await GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap, projectName);
-    FilterTablesInPlace(allUpdateTables);
+    await FilterTablesInPlace(allUpdateTables);
     const htmlString = CreateHTMLForAllUpdates(allUpdateTables);
     GetHtmlDisplayField().innerHTML = htmlString;
     
@@ -184,12 +184,12 @@ function GetAllRowNamesInTable(allUpdateTables)
 }
 
 
-function FilterTablesInPlace(allUpdateTables)
+async function FilterTablesInPlace(allUpdateTables)
 {
     for (const updateInfo of allUpdateTables) {
-        FilterInPlace(updateInfo.tableRows, (nameAndDiff) => !IsFieldHiddenByUserConfig(nameAndDiff.rowName));
+        await FilterInPlace(updateInfo.tableRows, row => IsFieldShownByUserConfig(row.rowName));
     }
-    FilterInPlace(allUpdateTables, (updateInfo) => updateInfo.tableRows.length != 0);
+    await FilterInPlace(allUpdateTables, (updateInfo) => updateInfo.tableRows.length != 0);
 }
 
 
@@ -373,13 +373,9 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
 
     gAdoSDK = adoSDK;
     gAdoAPI = adoAPI;
-    
-    await Promise.all([
-        InitSharedGlobals(adoSDK, adoAPI),
-        LoadConfiguration(adoSDK)
-    ]);
-    
-    InitializeConfigDialog();
+
+    InitializeConfiguration(adoSDK);    
+    await InitSharedGlobals(adoSDK, adoAPI);
 
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.
     // This causes ADO to show the 'spinning loading indicator' until we are ready.

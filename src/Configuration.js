@@ -40,8 +40,61 @@ const DEFAULT_USER_CONFIG = new UserConfig([], false);
 
 var gUserConfig = DEFAULT_USER_CONFIG;
 
+var gInitConfigurationPromise;
 
-export async function LoadConfiguration(adoSDK)
+
+export function InitializeConfiguration(adoSDK)
+{
+    // To improve loading times, we want to simultaneously fetch the configuration and the item's history.
+    // Therefore, we do not "await" the promise here, but instead only once we really need to access the
+    // config data.
+    gInitConfigurationPromise = LoadAndInitializeConfiguration(adoSDK);
+}
+
+
+export async function IsFieldShownByUserConfig(rowName)
+{
+    await gInitConfigurationPromise;
+    return IsFieldShownByUserConfigImpl(rowName);
+}
+
+
+function IsFieldShownByUserConfigImpl(rowName)
+{
+    if (!AnyFieldFiltersEnabled()) {
+        return true;
+    }
+    return !gUserConfig.fieldFilters.some(filteredField => StringsMatchCaseInsensitiveWithWildcard(rowName, filteredField));
+}
+
+
+export async function UpdateConfigDialogFieldSuggestions(fields)
+{
+    await gInitConfigurationPromise;
+
+    const datalist = document.getElementById("config-dialog-suggested-fields");
+    if (!datalist) { 
+        throw new Error('HistoryDiff: HTML element not found.');
+    }
+    datalist.replaceChildren();
+    for (const field of fields) {
+        if (IsFieldShownByUserConfigImpl(field)) { // Don't suggest already hidden fields.
+            const newOption = document.createElement("option");
+            newOption.value = field;
+            datalist.appendChild(newOption);
+        }
+    }
+}
+
+
+async function LoadAndInitializeConfiguration(adoSDK)
+{
+    await LoadConfiguration(adoSDK);
+    InitializeConfigDialog();
+}
+
+
+async function LoadConfiguration(adoSDK)
 {
     try {
         const extensionContext = adoSDK.getExtensionContext()
@@ -80,15 +133,6 @@ function AnyFieldFiltersEnabled()
 }
 
 
-export function IsFieldHiddenByUserConfig(rowName)
-{
-    if (!AnyFieldFiltersEnabled()) {
-        return false;
-    }
-    return gUserConfig.fieldFilters.some(filteredField => StringsMatchCaseInsensitiveWithWildcard(rowName, filteredField));
-}
-
-
 function GetOpenFilterConfigButton()
 {
     const button = document.getElementById("config-dialog-show");
@@ -116,7 +160,7 @@ function UpdateFilterButton()
 }
 
 
-export function InitializeConfigDialog()
+function InitializeConfigDialog()
 {
     const configDialog = document.getElementById("config-dialog");
     if (!configDialog) {
@@ -158,23 +202,6 @@ export function InitializeConfigDialog()
 
     document.getElementById("config-dialog-add-field-filter")?.addEventListener(
         "click", () => AddFieldFilterControlRowToDialog(fieldFiltersTable, ""));
-}
-
-
-export function UpdateConfigDialogFieldSuggestions(fields)
-{
-    const datalist = document.getElementById("config-dialog-suggested-fields");
-    if (!datalist) { 
-        throw new Error('HistoryDiff: HTML element not found.');
-    }
-    datalist.replaceChildren();
-    for (const field of fields) {
-        if (!IsFieldHiddenByUserConfig(field)) { // Don't suggest already hidden fields.
-            const newOption = document.createElement("option");
-            newOption.value = field;
-            datalist.appendChild(newOption);
-        }
-    }
 }
 
 

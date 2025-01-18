@@ -96,14 +96,15 @@ export function DiffHtmlText(oldValue, newValue)
 }
 
 
-// https://stackoverflow.com/a/56824017/3740047
-export function FilterInPlace(array, includeIfTruePredicate) 
+// Based on https://stackoverflow.com/a/56824017/3740047
+export async function FilterInPlace(array, includeIfTruePredicate) 
 {
     let iOut = 0;
     for (let i = 0; i < array.length; ++i) {
-      if (includeIfTruePredicate(array[i])) {
-        array[iOut++] = array[i];
-      }
+        const incl = await includeIfTruePredicate(array[i]);
+        if (incl) {
+            array[iOut++] = array[i];
+        }
     }
     array.length = iOut;
 }
