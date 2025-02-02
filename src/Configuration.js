@@ -15,7 +15,7 @@ var gExtensionDataManager;
 
 // The current version the extension uses. Every time we need to break backwards compatibility, we will
 // increment it. That way we know when we read configs from an older version of the extension.
-const USER_CONFIG_VERSION = 1;
+const USER_CONFIG_VERSION = 2;
 
 
 // UserConfig constructor
@@ -36,7 +36,10 @@ function UserConfig(fieldFilters, fieldFiltersDisabled)
 }
 
 
-const DEFAULT_USER_CONFIG = new UserConfig([], false);
+// In earlier version of the HistoryDiff extension, we hid the "Rev" (=revision) and stack rank fields from users always.
+// They clutter up the history quite a lot, and are probably uninteresting for many users. Hence we want to hide them by
+// default. (We show these fields at all due to GitHub issues #2 and #3.)
+const DEFAULT_USER_CONFIG = new UserConfig(["Rev", "Stack Rank"], false);
 
 var gUserConfig = DEFAULT_USER_CONFIG;
 
@@ -108,6 +111,22 @@ async function LoadConfiguration(adoSDK)
         // The data is stored on the server per user.
         gExtensionDataManager = await extensionDataService.getExtensionDataManager(extensionContext.id, accessToken);
         gUserConfig = await gExtensionDataManager.getValue(USER_CONFIG_KEY, {scopeType: "User", defaultValue: DEFAULT_USER_CONFIG});
+        if (!gUserConfig) {
+            gUserConfig = DEFAULT_USER_CONFIG;
+        }
+        else if (gUserConfig.configVersion <= 1) {
+            // For configs from earlier versions of the extension, add the "Rev" and stack rank fields, since we now
+            // no longer hide these fields always. Also compare explanation at DEFAULT_USER_CONFIG.
+            if (!gUserConfig.fieldFilters) {
+                gUserConfig.fieldFilters = []
+            }
+            if (gUserConfig.fieldFilters.indexOf("Rev") < 0) {
+                gUserConfig.fieldFilters.push("Rev");
+            }
+            if (gUserConfig.fieldFilters.indexOf("Stack Rank") < 0) {
+                gUserConfig.fieldFilters.push("Stack Rank");
+            }
+        }
     }
     catch (ex) {
         console.log(`HistoryDiff: Exception trying to load configuration: ${ex}`);
