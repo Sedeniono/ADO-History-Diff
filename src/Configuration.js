@@ -7,7 +7,7 @@ import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServic
 import { StringsMatchCaseInsensitiveWithWildcard } from './Utils.js';
 import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
-const USER_CONFIG_KEY = "HistoryDiffUserConfig";
+const USER_CONFIG_KEY = 'HistoryDiffUserConfig';
 
 // IExtensionDataManager: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iextensiondatamanager
 var gExtensionDataManager;
@@ -39,7 +39,7 @@ function UserConfig(fieldFilters, fieldFiltersDisabled)
 // In earlier version of the HistoryDiff extension, we hid the "Rev" (=revision) and stack rank fields from users always.
 // They clutter up the history quite a lot, and are probably uninteresting for many users. Hence we want to hide them by
 // default. (We show these fields at all due to GitHub issues #2 and #3.)
-const DEFAULT_USER_CONFIG = new UserConfig(["Rev", "Stack Rank"], false);
+const DEFAULT_USER_CONFIG = new UserConfig(['Rev', 'Stack Rank'], false);
 
 var gUserConfig = DEFAULT_USER_CONFIG;
 
@@ -75,14 +75,14 @@ export async function UpdateConfigDialogFieldSuggestions(fields)
 {
     await gInitConfigurationPromise;
 
-    const datalist = document.getElementById("config-dialog-suggested-fields");
+    const datalist = document.getElementById('config-dialog-suggested-fields');
     if (!datalist) { 
         throw new Error('HistoryDiff: HTML element not found.');
     }
     datalist.replaceChildren();
     for (const field of fields) {
         if (IsFieldShownByUserConfigImpl(field)) { // Don't suggest already hidden fields.
-            const newOption = document.createElement("option");
+            const newOption = document.createElement('option');
             newOption.value = field;
             datalist.appendChild(newOption);
         }
@@ -110,7 +110,7 @@ async function LoadConfiguration(adoSDK)
         // https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage?view=azure-devops-2020
         // The data is stored on the server per user.
         gExtensionDataManager = await extensionDataService.getExtensionDataManager(extensionContext.id, accessToken);
-        gUserConfig = await gExtensionDataManager.getValue(USER_CONFIG_KEY, {scopeType: "User", defaultValue: DEFAULT_USER_CONFIG});
+        gUserConfig = await gExtensionDataManager.getValue(USER_CONFIG_KEY, {scopeType: 'User', defaultValue: DEFAULT_USER_CONFIG});
         if (!gUserConfig) {
             gUserConfig = DEFAULT_USER_CONFIG;
         }
@@ -120,11 +120,11 @@ async function LoadConfiguration(adoSDK)
             if (!gUserConfig.fieldFilters) {
                 gUserConfig.fieldFilters = []
             }
-            if (gUserConfig.fieldFilters.indexOf("Rev") < 0) {
-                gUserConfig.fieldFilters.push("Rev");
+            if (gUserConfig.fieldFilters.indexOf('Rev') < 0) {
+                gUserConfig.fieldFilters.push('Rev');
             }
-            if (gUserConfig.fieldFilters.indexOf("Stack Rank") < 0) {
-                gUserConfig.fieldFilters.push("Stack Rank");
+            if (gUserConfig.fieldFilters.indexOf('Stack Rank') < 0) {
+                gUserConfig.fieldFilters.push('Stack Rank');
             }
         }
     }
@@ -138,7 +138,7 @@ function SaveFieldFiltersToConfig(newFieldFilters, fieldFiltersDisabled)
 {
     try {
         gUserConfig = new UserConfig(newFieldFilters, fieldFiltersDisabled);
-        gExtensionDataManager.setValue(USER_CONFIG_KEY, gUserConfig, {scopeType: "User"});
+        gExtensionDataManager.setValue(USER_CONFIG_KEY, gUserConfig, {scopeType: 'User'});
     }
     catch (ex) {
         console.log(`HistoryDiff: Exception trying to save configuration: ${ex}`);
@@ -154,7 +154,7 @@ function AnyFieldFiltersEnabled()
 
 function GetOpenFilterConfigButton()
 {
-    const button = document.getElementById("config-dialog-show");
+    const button = document.getElementById('config-dialog-show');
     if (!button) {
         throw new Error('HistoryDiff: HTML element not found.');
     }
@@ -164,7 +164,7 @@ function GetOpenFilterConfigButton()
 
 function GetDisabledAllFieldFiltersCheckbox()
 {
-    const checkbox = document.getElementById("config-dialog-disable-all-field-filters");
+    const checkbox = document.getElementById('config-dialog-disable-all-field-filters');
     if (!checkbox) {
         throw new Error('HistoryDiff: HTML element not found.');
     }
@@ -181,12 +181,12 @@ function UpdateFilterButton()
 
 function InitializeConfigDialog()
 {
-    const configDialog = document.getElementById("config-dialog");
+    const configDialog = document.getElementById('config-dialog');
     if (!configDialog) {
         throw new Error('HistoryDiff: HTML element not found.');
     }
 
-    const fieldFiltersTable = document.getElementById("config-dialog-field-filters-table");
+    const fieldFiltersTable = document.getElementById('config-dialog-field-filters-table');
     if (!fieldFiltersTable) {
         throw new Error('HistoryDiff: HTML element not found.');
     }
@@ -194,7 +194,7 @@ function InitializeConfigDialog()
     const disabledFieldFiltersCheckbox = GetDisabledAllFieldFiltersCheckbox();
 
     GetOpenFilterConfigButton().addEventListener(
-        "click", 
+        'click', 
         () => {
             SetCurrentFieldFiltersInDialog(fieldFiltersTable);
             // @ts-ignore
@@ -205,8 +205,8 @@ function InitializeConfigDialog()
 
     UpdateFilterButton();
 
-    document.getElementById("config-dialog-ok")?.addEventListener(
-        "click", 
+    document.getElementById('config-dialog-ok')?.addEventListener(
+        'click', 
         () => {
             SaveAllFieldFiltersFromDialog(configDialog);
             UpdateFilterButton();
@@ -215,21 +215,21 @@ function InitializeConfigDialog()
             LoadAndSetDiffInHTMLDocument();
     });
 
-    document.getElementById("config-dialog-cancel")?.addEventListener(
+    document.getElementById('config-dialog-cancel')?.addEventListener(
         // @ts-ignore
-        "click", () => configDialog.close());
+        'click', () => configDialog.close());
 
-    document.getElementById("config-dialog-add-field-filter")?.addEventListener(
-        "click", () => AddFieldFilterControlRowToDialog(fieldFiltersTable, ""));
+    document.getElementById('config-dialog-add-field-filter')?.addEventListener(
+        'click', () => AddFieldFilterControlRowToDialog(fieldFiltersTable, ''));
 }
 
 
 function SaveAllFieldFiltersFromDialog(configDialog)
 {
-    const allInputs = configDialog.getElementsByTagName("input");
+    const allInputs = configDialog.getElementsByTagName('input');
     let filters = [];
     for (const inputCtrl of allInputs) {
-        if (inputCtrl.type === "text" && inputCtrl.value != null && inputCtrl.value.trim().length !== 0) {
+        if (inputCtrl.type === 'text' && inputCtrl.value != null && inputCtrl.value.trim().length !== 0) {
             filters.push(inputCtrl.value);
         }
     }
@@ -253,23 +253,23 @@ function SetCurrentFieldFiltersInDialog(fieldFiltersTable)
 
 function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
 {
-    const newInput = document.createElement("input");
-    newInput.setAttribute("type", "text");
-    newInput.setAttribute("list", "config-dialog-suggested-fields");
-    newInput.setAttribute("size", "30");
+    const newInput = document.createElement('input');
+    newInput.setAttribute('type', 'text');
+    newInput.setAttribute('list', 'config-dialog-suggested-fields');
+    newInput.setAttribute('size', '30');
     newInput.value = filterString;
 
-    const newDeleteButton = document.createElement("button");
-    newDeleteButton.setAttribute("class", "deleteFilter");
-    newDeleteButton.textContent = "❌";
+    const newDeleteButton = document.createElement('button');
+    newDeleteButton.setAttribute('class', 'deleteFilter');
+    newDeleteButton.textContent = '❌';
     
-    const newRow = document.createElement("tr");
-    newRow.appendChild(document.createElement("td")).appendChild(newInput);
-    newRow.appendChild(document.createElement("td")).appendChild(newDeleteButton);
+    const newRow = document.createElement('tr');
+    newRow.appendChild(document.createElement('td')).appendChild(newInput);
+    newRow.appendChild(document.createElement('td')).appendChild(newDeleteButton);
     
     fieldFiltersTable.appendChild(newRow);
 
-    newDeleteButton.addEventListener("click", () => {
+    newDeleteButton.addEventListener('click', () => {
         fieldFiltersTable.removeChild(newRow);
     });
 }
