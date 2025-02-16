@@ -8,6 +8,7 @@ import { InitSharedGlobals } from './Globals.js';
 import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions } from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace } from './Utils';
+import { GenerateCutoutsWithContext, GetLineHeightInPixel } from './GenerateCutoutsWithContext';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
 
 
@@ -162,16 +163,40 @@ export async function LoadAndSetDiffInHTMLDocument()
 
     const allUpdateTables = await GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap, projectName);
     await FilterTablesInPlace(allUpdateTables);
-    const fullUpdateElem = CreateHTMLForAllUpdates(allUpdateTables);
+    const updateHtml = CreateHTMLForAllUpdates(allUpdateTables);
 
     const displayField = GetHtmlDisplayField();
     displayField.textContent = '';
-    displayField.appendChild(fullUpdateElem);
+    displayField.appendChild(updateHtml.div);
     
     // To make it easier for the user to enter new filters, add the rows as datalist
     // to the dialog.
     const allRowNames = GetAllRowNamesInTable(allUpdateTables);
     UpdateConfigDialogFieldSuggestions(allRowNames);
+
+    // TODO:
+    // - numContextLines==0: Seems to have a slight offset downwards?
+    // - Height of the cutout.div is larger than necessary? Check the very first work item entry: The rows are wider spaced than necessary.
+    // - Separator between cutouts, no background color for cutouts.
+    // - Buttons to allow expansion/collapsing
+    // - Config for number of context lines
+    // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
+    const lineHeight = GetLineHeightInPixel(displayField);
+    let allCellPromises = [];
+    for (const cell of updateHtml.allContentCells) {
+        const promise = GenerateCutoutsWithContext(cell, ['ins', 'del'], 2, lineHeight)
+            .then(cutouts => {
+                if (cutouts && cutouts.length > 0) {
+                    cell.textContent = '';
+                    for (const cutout of cutouts) {
+                        cell.appendChild(cutout.div);
+                        cell.appendChild(document.createElement('br'));
+                    }
+                }
+            });
+        allCellPromises.push(promise);
+    }
+    await Promise.all(allCellPromises);
 }
 
 
@@ -198,15 +223,17 @@ async function FilterTablesInPlace(allUpdateTables)
 
 function CreateHTMLForAllUpdates(allUpdateTables)
 {
+    let allContentCells = [];
     const div = document.createElement('div');
     for (const updateInfo of allUpdateTables) {
-        const updateElem = CreateHTMLForUpdateOnSingleDate(updateInfo);
-        if (updateElem) {
+        const html = CreateHTMLForUpdateOnSingleDate(updateInfo);
+        if (html && html.div) {
             const hr = document.createElement('hr');
-            div.append(hr, updateElem);
+            div.append(hr, html.div);
+            allContentCells.push.apply(allContentCells, html.allContentCells);
         }
     }
-    return div;
+    return {div, allContentCells};
 }
 
 
@@ -237,6 +264,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
     thead.innerHTML = '<tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr>';
     table.appendChild(thead);
 
+    let allContentCells = [];
     const tbody = document.createElement('tbody');
     for (const row of tableRows) {
         const tr = document.createElement('tr');
@@ -249,6 +277,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
         const tdContent = document.createElement('td');
         tdContent.classList.add('diffCls');
         tdContent.innerHTML = row.content;
+        allContentCells.push(tdContent);
 
         tr.append(tdName, tdContent);
         tbody.appendChild(tr);
@@ -257,7 +286,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
 
     const div = document.createElement('div');
     div.append(header, table);
-    return div;
+    return {div, allContentCells};
 }
 
 
