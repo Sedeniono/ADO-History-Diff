@@ -162,8 +162,11 @@ export async function LoadAndSetDiffInHTMLDocument()
 
     const allUpdateTables = await GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap, projectName);
     await FilterTablesInPlace(allUpdateTables);
-    const htmlString = CreateHTMLForAllUpdates(allUpdateTables);
-    GetHtmlDisplayField().innerHTML = htmlString;
+    const fullUpdateElem = CreateHTMLForAllUpdates(allUpdateTables);
+
+    const displayField = GetHtmlDisplayField();
+    displayField.textContent = '';
+    displayField.appendChild(fullUpdateElem);
     
     // To make it easier for the user to enter new filters, add the rows as datalist
     // to the dialog.
@@ -195,14 +198,15 @@ async function FilterTablesInPlace(allUpdateTables)
 
 function CreateHTMLForAllUpdates(allUpdateTables)
 {
-    let s = '';
+    const div = document.createElement('div');
     for (const updateInfo of allUpdateTables) {
-        const updateStr = CreateHTMLForUpdateOnSingleDate(updateInfo);
-        if (updateStr) {
-            s += `<hr><div>${updateStr}</div>`;
+        const updateElem = CreateHTMLForUpdateOnSingleDate(updateInfo);
+        if (updateElem) {
+            const hr = document.createElement('hr');
+            div.append(hr, updateElem);
         }
     }
-    return s;
+    return div;
 }
 
 
@@ -221,14 +225,39 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
     const changedDateStr = updateInfo.changedDate ? FormatDate(updateInfo.changedDate) : 'an unknown date';
     const idStr = (updateInfo.idNumber && updateInfo.idNumber !== COMMENT_UPDATE_ID) ? ` (update ${updateInfo.idNumber})` : '';
 
-    let s = `<div class="changeHeader">${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDateStr}</i>${idStr}:</div>`;
-    let tableRowsStr = '';
+    const header = document.createElement('div');
+    header.classList.add('changeHeader');
+    header.innerHTML = `${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDateStr}</i>${idStr}:`;
+
+    const table = document.createElement('table');
+    table.classList.add('diffCls');
+    
+    const thead = document.createElement('thead');
+    thead.classList.add('diffCls');
+    thead.innerHTML = '<tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
     for (const row of tableRows) {
-        tableRowsStr += `<tr class="diffCls"><td class="diffCls">${row.rowName}</td><td class="diffCls">${row.content}</td></tr>`
+        const tr = document.createElement('tr');
+        tr.classList.add('diffCls');
+
+        const tdName = document.createElement('td');
+        tdName.classList.add('diffCls');
+        tdName.innerHTML = row.rowName;
+        
+        const tdContent = document.createElement('td');
+        tdContent.classList.add('diffCls');
+        tdContent.innerHTML = row.content;
+
+        tr.append(tdName, tdContent);
+        tbody.appendChild(tr);
     }
-    s += `<table class="diffCls"><thead class="diffCls"><tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr></thead>
-        <tbody>${tableRowsStr}</tbody></table>`;
-    return s;
+    table.appendChild(tbody);
+
+    const div = document.createElement('div');
+    div.append(header, table);
+    return div;
 }
 
 
