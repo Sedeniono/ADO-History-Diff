@@ -88,10 +88,11 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
         }
         else {
             const newCutoutDiv = document.createElement("div");
+            newCutoutDiv.classList.add('cutoutCls');
             // Main trick: Set the "overflow" and "height" to show only a cut-out of the original. Below, we will scroll
             // its content to the desired position.
             newCutoutDiv.style.cssText 
-                = `background-color: yellow; border: 0px solid red; display: block; overflow: hidden; height: ${contextHeight}px;`;
+                = `display: block; overflow: hidden; height: ${contextHeight}px;`;
 
             // Deep clone the original html element.
             for (const child of originalHtmlElement.childNodes) {
@@ -103,6 +104,12 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
         }
     }
     
+    if (cutouts.length === 1 && cutouts[0].top <= 0 && cutouts[0].bottom >= originalRect.height) {
+        // We got a single cutout covering the whole original element. So we don't really
+        // have a meaningful cutout.
+        return undefined;
+    }
+
     for (const cutout of cutouts) {
         cutout.div.scroll({left: 0, top: cutout.top, behavior: "instant"});
     }

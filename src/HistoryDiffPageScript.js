@@ -188,9 +188,12 @@ export async function LoadAndSetDiffInHTMLDocument()
             .then(cutouts => {
                 if (cutouts && cutouts.length > 0) {
                     cell.textContent = '';
+                    const borderDiv = document.createElement('div');
+                    borderDiv.classList.add('cutoutBorderCls');
+                    cell.appendChild(borderDiv); // TODO: Only if first cut does not start at the top?
                     for (const cutout of cutouts) {
                         cell.appendChild(cutout.div);
-                        cell.appendChild(document.createElement('br'));
+                        cell.appendChild(borderDiv.cloneNode(true)); // TODO: Only if last cut does not end at the bottom?
                     }
                 }
             });
@@ -285,6 +288,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
     table.appendChild(tbody);
 
     const div = document.createElement('div');
+    div.classList.add('fullUpdateCls');
     div.append(header, table);
     return {div, allContentCells};
 }
