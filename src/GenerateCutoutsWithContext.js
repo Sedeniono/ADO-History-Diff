@@ -104,6 +104,10 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
         }
     }
     
+    if (cutouts.length === 0) {
+        return undefined;
+    }
+
     if (cutouts.length === 1 && cutouts[0].top <= 0 && cutouts[0].bottom >= originalRect.height) {
         // We got a single cutout covering the whole original element. So we don't really
         // have a meaningful cutout.
@@ -125,7 +129,9 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
         }
     }, 0);
 
-    return cutouts;
+    const firstCutoutStartsAtTop = cutouts[0].top <= 0;
+    const finalCutoutEndsAtBottom = cutouts[cutouts.length - 1].bottom >= originalRect.height;
+    return {cutouts, firstCutoutStartsAtTop, finalCutoutEndsAtBottom};
 }
 
 

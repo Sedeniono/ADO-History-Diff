@@ -185,15 +185,21 @@ export async function LoadAndSetDiffInHTMLDocument()
     let allCellPromises = [];
     for (const cell of updateHtml.allContentCells) {
         const promise = GenerateCutoutsWithContext(cell, ['ins', 'del'], 2, lineHeight)
-            .then(cutouts => {
-                if (cutouts && cutouts.length > 0) {
+            .then(cutoutInfos => {
+                if (cutoutInfos && cutoutInfos.cutouts && cutoutInfos.cutouts.length > 0) {
                     cell.textContent = '';
                     const borderDiv = document.createElement('div');
                     borderDiv.classList.add('cutoutBorderCls');
-                    cell.appendChild(borderDiv); // TODO: Only if first cut does not start at the top?
-                    for (const cutout of cutouts) {
-                        cell.appendChild(cutout.div);
-                        cell.appendChild(borderDiv.cloneNode(true)); // TODO: Only if last cut does not end at the bottom?
+                    if (!cutoutInfos.firstCutoutStartsAtTop) {
+                        cell.appendChild(borderDiv.cloneNode(true)).classList.add('cutoutBorderTopCls');
+                    }
+                    for (let cutoutIdx = 0; cutoutIdx < cutoutInfos.cutouts.length - 1; ++cutoutIdx) {
+                        cell.appendChild(cutoutInfos.cutouts[cutoutIdx].div);
+                        cell.appendChild(borderDiv.cloneNode(true)).classList.add('cutoutBorderMiddleCls');
+                    }
+                    cell.appendChild(cutoutInfos.cutouts[cutoutInfos.cutouts.length - 1].div);
+                    if (!cutoutInfos.finalCutoutEndsAtBottom) {
+                        cell.appendChild(borderDiv.cloneNode(true)).classList.add('cutoutBorderBottomCls');
                     }
                 }
             });
