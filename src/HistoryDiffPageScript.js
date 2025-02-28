@@ -181,6 +181,8 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Buttons to allow expansion/collapsing
     // - Config for number of context lines
     // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
+    // - Dark theme colors
+    // - Some tolerance: If less than e.g. 1 or 1.5 lines are inbetween, merge.
     const lineHeight = GetLineHeightInPixel(displayField);
     let allCellPromises = [];
     for (const cell of updateHtml.allContentCells) {
@@ -188,24 +190,42 @@ export async function LoadAndSetDiffInHTMLDocument()
             .then(cutoutInfos => {
                 if (cutoutInfos && cutoutInfos.cutouts && cutoutInfos.cutouts.length > 0) {
                     cell.textContent = '';
-                    const borderDiv = document.createElement('div');
-                    borderDiv.classList.add('cutoutBorderCls');
-                    if (!cutoutInfos.firstCutoutStartsAtTop) {
-                        cell.appendChild(borderDiv.cloneNode(true)).classList.add('cutoutBorderTopCls');
+                    const cutouts = cutoutInfos.cutouts;
+
+                    const firstCutoutStartsAtTop = cutouts[0].top <= 0;
+                    if (!firstCutoutStartsAtTop) {
+                        const numHiddenLines = Math.ceil(cutouts[0].top / lineHeight);
+                        cell.appendChild(CreateCutoutBorderDiv('cutoutBorderTopCls', numHiddenLines));
                     }
-                    for (let cutoutIdx = 0; cutoutIdx < cutoutInfos.cutouts.length - 1; ++cutoutIdx) {
-                        cell.appendChild(cutoutInfos.cutouts[cutoutIdx].div);
-                        cell.appendChild(borderDiv.cloneNode(true)).classList.add('cutoutBorderMiddleCls');
+
+                    for (let cutoutIdx = 0; cutoutIdx < cutouts.length - 1; ++cutoutIdx) {
+                        cell.appendChild(cutouts[cutoutIdx].div);
+                        const numHiddenLines = Math.ceil((cutouts[cutoutIdx + 1].top - cutouts[cutoutIdx].bottom) / lineHeight);
+                        cell.appendChild(CreateCutoutBorderDiv('cutoutBorderMiddleCls', numHiddenLines));
                     }
-                    cell.appendChild(cutoutInfos.cutouts[cutoutInfos.cutouts.length - 1].div);
-                    if (!cutoutInfos.finalCutoutEndsAtBottom) {
-                        cell.appendChild(borderDiv.cloneNode(true)).classList.add('cutoutBorderBottomCls');
+
+                    const finalCutout = cutouts[cutouts.length - 1];
+                    cell.appendChild(finalCutout.div);
+                    const finalCutoutEndsAtBottom = finalCutout.bottom >= cutoutInfos.originalHeight;
+                    if (!finalCutoutEndsAtBottom) {
+                        const numHiddenLines = Math.ceil((cutoutInfos.originalHeight - finalCutout.bottom) / lineHeight);
+                        cell.appendChild(CreateCutoutBorderDiv('cutoutBorderBottomCls', numHiddenLines));
                     }
                 }
             });
         allCellPromises.push(promise);
     }
     await Promise.all(allCellPromises);
+}
+
+
+function CreateCutoutBorderDiv(positionClass, numHiddenLines)
+{
+    const borderDiv = document.createElement('div');
+    borderDiv.classList.add('cutoutBorderCls');
+    borderDiv.classList.add(positionClass);
+    borderDiv.textContent = numHiddenLines === 1 ? `1 hidden line` : `${numHiddenLines} hidden lines`;
+    return borderDiv;
 }
 
 

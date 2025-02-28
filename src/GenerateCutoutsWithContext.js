@@ -74,7 +74,8 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
         targetBottom = Math.max(targetBottom, targetTop + lineHeightInPixel);
 
         // Get the top and bottom position of the "context" that we want to show. The positions are in pixels and relative
-        // to the top of `originalHtmlElement`.
+        // to the top of `originalHtmlElement`. So contextTop=0 means at the very top, and contextBottom=originalRect.height
+        // means at the very bottom.
         const contextTop = Math.max(0, targetTop - numContextInPixel - originalTop);
         const contextBottom = Math.max(contextTop, Math.min(originalBottom, targetBottom + numContextInPixel) - originalTop);
         const contextHeight = contextBottom - contextTop;        
@@ -129,9 +130,7 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
         }
     }, 0);
 
-    const firstCutoutStartsAtTop = cutouts[0].top <= 0;
-    const finalCutoutEndsAtBottom = cutouts[cutouts.length - 1].bottom >= originalRect.height;
-    return {cutouts, firstCutoutStartsAtTop, finalCutoutEndsAtBottom};
+    return {cutouts, originalHeight: originalRect.height};
 }
 
 
