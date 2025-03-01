@@ -260,7 +260,7 @@ function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
     newInput.value = filterString;
 
     const newDeleteButton = document.createElement('button');
-    newDeleteButton.setAttribute('class', 'deleteFilter');
+    newDeleteButton.setAttribute('class', 'delete-filter');
     newDeleteButton.textContent = '❌';
     
     const newRow = document.createElement('tr');

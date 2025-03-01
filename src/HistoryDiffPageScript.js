@@ -176,8 +176,6 @@ export async function LoadAndSetDiffInHTMLDocument()
 
     // TODO:
     // - numContextLines==0: Seems to have a slight offset downwards?
-    // - Height of the cutout.div is larger than necessary? Check the very first work item entry: The rows are wider spaced than necessary.
-    // - Separator between cutouts, no background color for cutouts.
     // - Buttons to allow expansion/collapsing
     // - Config for number of context lines
     // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
@@ -196,13 +194,13 @@ export async function LoadAndSetDiffInHTMLDocument()
                     const firstCutoutStartsAtTop = cutouts[0].top <= 0;
                     if (!firstCutoutStartsAtTop) {
                         const numHiddenLines = Math.ceil(cutouts[0].top / lineHeight);
-                        cell.appendChild(CreateCutoutBorderDiv('cutoutBorderTopCls', numHiddenLines));
+                        cell.appendChild(CreateCutoutBorderDiv('cutout-border-at-top', numHiddenLines));
                     }
 
                     for (let cutoutIdx = 0; cutoutIdx < cutouts.length - 1; ++cutoutIdx) {
                         cell.appendChild(cutouts[cutoutIdx].div);
                         const numHiddenLines = Math.ceil((cutouts[cutoutIdx + 1].top - cutouts[cutoutIdx].bottom) / lineHeight);
-                        cell.appendChild(CreateCutoutBorderDiv('cutoutBorderMiddleCls', numHiddenLines));
+                        cell.appendChild(CreateCutoutBorderDiv('cutout-border-in-middle', numHiddenLines));
                     }
 
                     const finalCutout = cutouts[cutouts.length - 1];
@@ -210,7 +208,7 @@ export async function LoadAndSetDiffInHTMLDocument()
                     const finalCutoutEndsAtBottom = finalCutout.bottom >= cutoutInfos.originalHeight;
                     if (!finalCutoutEndsAtBottom) {
                         const numHiddenLines = Math.ceil((cutoutInfos.originalHeight - finalCutout.bottom) / lineHeight);
-                        cell.appendChild(CreateCutoutBorderDiv('cutoutBorderBottomCls', numHiddenLines));
+                        cell.appendChild(CreateCutoutBorderDiv('cutout-border-at-bottom', numHiddenLines));
                     }
                 }
             });
@@ -223,7 +221,7 @@ export async function LoadAndSetDiffInHTMLDocument()
 function CreateCutoutBorderDiv(positionClass, numHiddenLines)
 {
     const borderDiv = document.createElement('div');
-    borderDiv.classList.add('cutoutBorderCls');
+    borderDiv.classList.add('cutout-border-base');
     borderDiv.classList.add(positionClass);
     borderDiv.textContent = numHiddenLines === 1 ? `1 hidden line` : `${numHiddenLines} hidden lines`;
     return borderDiv;
@@ -283,29 +281,29 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
     const idStr = (updateInfo.idNumber && updateInfo.idNumber !== COMMENT_UPDATE_ID) ? ` (update ${updateInfo.idNumber})` : '';
 
     const header = document.createElement('div');
-    header.classList.add('changeHeader');
+    header.classList.add('update-header');
     header.innerHTML = `${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDateStr}</i>${idStr}:`;
 
     const table = document.createElement('table');
-    table.classList.add('diffCls');
+    table.classList.add('diff-class');
     
     const thead = document.createElement('thead');
-    thead.classList.add('diffCls');
-    thead.innerHTML = '<tr><th class="diffCls">Field</th><th class="diffCls">Content</th></tr>';
+    thead.classList.add('diff-class');
+    thead.innerHTML = '<tr><th class="diff-class">Field</th><th class="diff-class">Content</th></tr>';
     table.appendChild(thead);
 
     let allContentCells = [];
     const tbody = document.createElement('tbody');
     for (const row of tableRows) {
         const tr = document.createElement('tr');
-        tr.classList.add('diffCls');
+        tr.classList.add('diff-class');
 
         const tdName = document.createElement('td');
-        tdName.classList.add('diffCls');
+        tdName.classList.add('diff-class');
         tdName.innerHTML = row.rowName;
         
         const tdContent = document.createElement('td');
-        tdContent.classList.add('diffCls');
+        tdContent.classList.add('diff-class');
         tdContent.innerHTML = row.content;
         allContentCells.push(tdContent);
 
@@ -315,7 +313,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
     table.appendChild(tbody);
 
     const div = document.createElement('div');
-    div.classList.add('fullUpdateCls');
+    div.classList.add('full-single-update');
     div.append(header, table);
     return {div, allContentCells};
 }
@@ -374,10 +372,10 @@ function DetectAndApplyDarkMode()
         document.head.insertAdjacentHTML(
             'beforeend', 
             `<style>
-                del.diffCls { 
+                del.diff-class { 
                     background-color: rgb(149, 33, 0); 
                 }  
-                ins.diffCls { 
+                ins.diff-class { 
                     background-color: rgb(35, 94, 0); 
                 }
             </style>`);

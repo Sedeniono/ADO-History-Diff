@@ -123,9 +123,9 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, current
                     // Apparently, ADO does not keep track of the link comment edits, so this is the best we can do.
                     let commentHtml = '';
                     if (relation.attributes?.comment) {
-                        commentHtml = `<br><i>Newest link comment:</i> <ins class="diffCls">${EscapeHtml(relation.attributes.comment)}</ins>`;
+                        commentHtml = `<br><i>Newest link comment:</i> <ins class="diff-class">${EscapeHtml(relation.attributes.comment)}</ins>`;
                     }
-                    tableRows.push({rowName: `Link added: ${friendlyName}`, content: `<ins class="diffCls">${change}</ins>${commentHtml}`});
+                    tableRows.push({rowName: `Link added: ${friendlyName}`, content: `<ins class="diff-class">${change}</ins>${commentHtml}`});
                 }
             }
         }
@@ -134,7 +134,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, current
                 const changeStrings = await GetUserFriendlyStringsForRelationChange(currentProjectName, relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
-                    tableRows.push({rowName: `Link removed: ${friendlyName}`, content: `<del class="diffCls">${change}</del>`});
+                    tableRows.push({rowName: `Link removed: ${friendlyName}`, content: `<del class="diff-class">${change}</del>`});
                 }
             }                
         }
@@ -148,7 +148,7 @@ async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, current
                 const changeStrings = await GetUserFriendlyStringsForRelationChange(currentProjectName, relation);
                 if (typeof changeStrings !== 'undefined') {
                     const [friendlyName, change] = changeStrings;
-                    tableRows.push({rowName: `Link updated: ${friendlyName}`, content: `<ins class="diffCls">${change}</ins>`});
+                    tableRows.push({rowName: `Link updated: ${friendlyName}`, content: `<ins class="diff-class">${change}</ins>`});
                 }
             }
         }
@@ -242,7 +242,7 @@ function DiffHtmlText(oldValue, newValue)
     // <style> tag when loading a work item in the UI.
     const oldValueFixed = RemoveStyle(oldValue ?? '');
     const newValueFixed = RemoveStyle(newValue ?? '');
-    return htmldiff(oldValueFixed, newValueFixed, 'diffCls'); 
+    return htmldiff(oldValueFixed, newValueFixed, 'diff-class'); 
 }
 
 
@@ -301,7 +301,7 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         // no other field can use the 'History' field type. Hence, this code here is probably dead. We have dedicated REST
         // API requests somewhere else to get the history of comments.
         case FieldTypeEnum.History:
-            return value.hasOwnProperty('newValue') ? `<ins class="diffCls">${RemoveStyle(value.newValue)}</ins>` : '';
+            return value.hasOwnProperty('newValue') ? `<ins class="diff-class">${RemoveStyle(value.newValue)}</ins>` : '';
 
         case FieldTypeEnum.String:
         case FieldTypeEnum.PlainText:
@@ -315,7 +315,7 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
             const newLineRegex = /(?:\r\n|\r|\n)/g;
             const oldValue = EscapeHtml(value.oldValue ?? '').replace(newLineRegex, '<br>');
             const newValue = EscapeHtml(value.newValue ?? '').replace(newLineRegex, '<br>');
-            const diff = htmldiff(oldValue, newValue, 'diffCls');
+            const diff = htmldiff(oldValue, newValue, 'diff-class');
             return diff;
         }
 
@@ -327,16 +327,16 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         case FieldTypeEnum.Guid: // Guids are given as plain strings.
         case FieldTypeEnum.Boolean:
         case FieldTypeEnum.TreePath:
-            return (value.hasOwnProperty('oldValue') ? `<del class="diffCls">${EscapeHtml(value.oldValue)}</del>` : '') 
-                + (value.hasOwnProperty('newValue') ? `<ins class="diffCls">${EscapeHtml(value.newValue)}</ins>` : '');
+            return (value.hasOwnProperty('oldValue') ? `<del class="diff-class">${EscapeHtml(value.oldValue)}</del>` : '') 
+                + (value.hasOwnProperty('newValue') ? `<ins class="diff-class">${EscapeHtml(value.newValue)}</ins>` : '');
 
         case FieldTypeEnum.DateTime:
-            return (value.hasOwnProperty('oldValue') ? `<del class="diffCls">${FormatDate(value.oldValue)}</del>` : '') 
-                + (value.hasOwnProperty('newValue') ? `<ins class="diffCls">${FormatDate(value.newValue)}</ins>` : '');
+            return (value.hasOwnProperty('oldValue') ? `<del class="diff-class">${FormatDate(value.oldValue)}</del>` : '') 
+                + (value.hasOwnProperty('newValue') ? `<ins class="diff-class">${FormatDate(value.newValue)}</ins>` : '');
 
         case FieldTypeEnum.Identity:
-            return (value.hasOwnProperty('oldValue') ? `<del class="diffCls">${FormatIdentityForFieldDiff(value.oldValue)}</del>` : '') 
-                + (value.hasOwnProperty('newValue') ? `<ins class="diffCls">${FormatIdentityForFieldDiff(value.newValue)}</ins>` : '');
+            return (value.hasOwnProperty('oldValue') ? `<del class="diff-class">${FormatIdentityForFieldDiff(value.oldValue)}</del>` : '') 
+                + (value.hasOwnProperty('newValue') ? `<ins class="diff-class">${FormatIdentityForFieldDiff(value.newValue)}</ins>` : '');
 
         default:
             console.log(`HistoryDiff: Unknown field type '${fieldType}' (${FieldTypeEnum?.[fieldType]}), oldValueType: ${typeof value.oldValue}, newValueType: ${typeof value.newValue}`);

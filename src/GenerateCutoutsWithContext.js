@@ -98,7 +98,7 @@ export async function GenerateCutoutsWithContext(
         }
         else {
             const newCutoutDiv = document.createElement("div");
-            newCutoutDiv.classList.add('cutoutCls');
+            newCutoutDiv.classList.add('cutout-base');
             // Main trick: Set the "overflow" and "height" to show only a cut-out of the original. Below, we will scroll
             // its content to the desired position.
             newCutoutDiv.style.cssText 

@@ -78,7 +78,7 @@ export function GetIdentityAvatarHtml(identity)
     // According to the documentation (https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/identityreference),
     // 'imageUrl' is deprecated and '_links.avatar' should be used.
     const avatarUrl = identity?._links?.avatar?.href ?? '';
-    const avatarHtml = avatarUrl ? `<img src="${avatarUrl}" class="inlineAvatar" alt="Avatar">` : '';
+    const avatarHtml = avatarUrl ? `<img src="${avatarUrl}" class="inline-avatar" alt="Avatar">` : '';
     return avatarHtml;
 }
 
@@ -92,7 +92,7 @@ export function DiffHtmlText(oldValue, newValue)
     // <style> tag when loading a work item in the UI.
     const oldValueFixed = RemoveStyle(oldValue ?? '');
     const newValueFixed = RemoveStyle(newValue ?? '');
-    return htmldiff(oldValueFixed, newValueFixed, 'diffCls'); 
+    return htmldiff(oldValueFixed, newValueFixed, 'diff-class'); 
 }
 
 
