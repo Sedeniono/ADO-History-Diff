@@ -182,11 +182,12 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Config for number of context lines
     // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
     // - Dark theme colors
-    // - Some tolerance: If less than e.g. 1 or 1.5 lines are inbetween, merge.
     const lineHeight = GetLineHeightInPixel(displayField);
+    const numContextLines = 2; // TODO: Config
+    const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeight) : 0;
     let allCellPromises = [];
     for (const cell of updateHtml.allContentCells) {
-        const promise = GenerateCutoutsWithContext(cell, ['ins', 'del'], 2, lineHeight)
+        const promise = GenerateCutoutsWithContext(cell, ['ins', 'del'], numContextLines, lineHeight, mergingTolerance)
             .then(cutoutInfos => {
                 if (cutoutInfos && cutoutInfos.cutouts && cutoutInfos.cutouts.length > 0) {
                     cell.textContent = '';

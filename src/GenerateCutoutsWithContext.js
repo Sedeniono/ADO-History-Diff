@@ -19,10 +19,10 @@ export function GetLineHeightInPixel(el)
 // some specific html nodes in it + some context above and below each node. I.e. it creates new html nodes
 // that represent the context of the target nodes, where the size of the context is determined by the
 // `numContextLines` parameter (`numContextLines` above and and below, where each line is assumed to have
-// a height of `lineHeightInPixel`).
+// a height of `lineHeightInPixel`; the `lineHeightInPixel` can be queries via GetLineHeightInPixel()).
 // The target nodes are identified by their html element names in `targetHtmlElementNames`, such as "ins"
 // or "del".
-// If cutouts overlap, they are merged.
+// If cutouts overlap or are at most `mergingToleranceInPixel` pixels away from each other, they are merged.
 //
 // Note that `originalHtmlElement` must be in the DOM (so that sizes can be calculated).
 //
@@ -34,7 +34,8 @@ export function GetLineHeightInPixel(el)
 // put it into a "div" with a height matching the target node, and then use the css property `overflow` to 
 // actually only show the desired "slice". If there are multiple target nodes in `originalHtmlElement`, we
 // create a full clone each time of `originalHtmlElement` but show a different "slice" each time.
-export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtmlElementNames, numContextLines, lineHeightInPixel)
+export async function GenerateCutoutsWithContext(
+    originalHtmlElement, targetHtmlElementNames, numContextLines, lineHeightInPixel, mergingToleranceInPixel)
 {
     // We need all images to have loaded to get the correct extents of the elements.
     // https://stackoverflow.com/a/60382635/3740047
@@ -53,9 +54,9 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
         await Promise.all(imgPromises);
     }
 
-    const originalRect = originalHtmlElement.getBoundingClientRect();
-    const originalTop = originalRect.top;
-    const originalBottom = originalRect.bottom;
+    const origRect = originalHtmlElement.getBoundingClientRect();
+    const origTop = origRect.top;
+    const origBottom = origRect.bottom;
     
     // +1 to ensure we really don't cut anything off. It also causes merging of
     // contexts on successive lines.
@@ -63,27 +64,35 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
 
     let cutouts = [];
     let prevCutout = null;
-    const originalTargetNodes = originalHtmlElement.querySelectorAll(targetHtmlElementNames.join(","));
-    for (const targetNode of originalTargetNodes) {
+    const origTargetNodes = originalHtmlElement.querySelectorAll(targetHtmlElementNames.join(","));
+    for (const origTargetNode of origTargetNodes) {
         // Find the top and bottom of the target element.
-        const targetNodeExtent = GetTopAndBottomPositionOf(targetNode);
-        const targetTop = targetNodeExtent.top;
-        let targetBottom = targetNodeExtent.bottom;
+        const origTargetNodeExtent = GetTopAndBottomPositionOf(origTargetNode);
+        const origTargetTop = origTargetNodeExtent.top;
+        let origTargetBottom = origTargetNodeExtent.bottom;
 
         // If the target node is empty, ensure that we nevertheless show a meaningful context.
-        targetBottom = Math.max(targetBottom, targetTop + lineHeightInPixel);
+        origTargetBottom = Math.max(origTargetBottom, origTargetTop + lineHeightInPixel);
 
         // Get the top and bottom position of the "context" that we want to show. The positions are in pixels and relative
         // to the top of `originalHtmlElement`. So contextTop=0 means at the very top, and contextBottom=originalRect.height
         // means at the very bottom.
-        const contextTop = Math.max(0, targetTop - numContextInPixel - originalTop);
-        const contextBottom = Math.max(contextTop, Math.min(originalBottom, targetBottom + numContextInPixel) - originalTop);
-        const contextHeight = contextBottom - contextTop;        
+        let curCutoutTop = Math.max(0, origTargetTop - numContextInPixel - origTop);
+        let curCutoutBottom = Math.max(curCutoutTop, Math.min(origBottom, origTargetBottom + numContextInPixel) - origTop);
+
+        if (curCutoutTop <= mergingToleranceInPixel) {
+            curCutoutTop = 0;
+        }
+        if (origRect.height - curCutoutBottom <= mergingToleranceInPixel) {
+            curCutoutBottom = origRect.height;
+        }
+
+        const contextHeight = curCutoutBottom - curCutoutTop;        
         
         // Merge successive overlapping cutouts.
-        if (prevCutout && prevCutout.bottom >= contextTop) { 
-            prevCutout.top = Math.min(prevCutout.top, contextTop);
-            prevCutout.bottom = Math.max(prevCutout.bottom, contextBottom);
+        if (prevCutout && prevCutout.bottom + mergingToleranceInPixel >= curCutoutTop) { 
+            prevCutout.top = Math.min(prevCutout.top, curCutoutTop);
+            prevCutout.bottom = Math.max(prevCutout.bottom, curCutoutBottom);
             const newPrevHeight = prevCutout.bottom - prevCutout.top;
             prevCutout.div.style.height = `${newPrevHeight}px`;
         }
@@ -100,7 +109,7 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
                 newCutoutDiv.appendChild(child.cloneNode(true));
             }
 
-            prevCutout = {div: newCutoutDiv, top: contextTop, bottom: contextBottom};
+            prevCutout = {div: newCutoutDiv, top: curCutoutTop, bottom: curCutoutBottom};
             cutouts.push(prevCutout);
         }
     }
@@ -109,7 +118,7 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
         return undefined;
     }
 
-    if (cutouts.length === 1 && cutouts[0].top <= 0 && cutouts[0].bottom >= originalRect.height) {
+    if (cutouts.length === 1 && cutouts[0].top <= 0 && cutouts[0].bottom >= origRect.height) {
         // We got a single cutout covering the whole original element. So we don't really
         // have a meaningful cutout.
         return undefined;
@@ -130,7 +139,7 @@ export async function GenerateCutoutsWithContext(originalHtmlElement, targetHtml
         }
     }, 0);
 
-    return {cutouts, originalHeight: originalRect.height};
+    return {cutouts, originalHeight: origRect.height};
 }
 
 
