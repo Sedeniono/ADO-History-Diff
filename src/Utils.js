@@ -127,3 +127,13 @@ export function StringsMatchCaseInsensitiveWithWildcard(str, rule)
     const regexRule = "^" + rule.split("*").map(EscapeForRegex).join(".*") + "$";
     return new RegExp(regexRule, "i").test(str);
 }
+
+
+export function GetHtmlElement(elementId)
+{
+    const elem = document.getElementById(elementId);
+    if (!elem) {
+        throw new Error(`HistoryDiff: HTML element "${elementId}" not found.`);
+    }
+    return elem;
+}

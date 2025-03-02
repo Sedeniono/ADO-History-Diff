@@ -4,7 +4,7 @@
 // @ts-check
 
 import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServices';
-import { StringsMatchCaseInsensitiveWithWildcard } from './Utils.js';
+import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils.js';
 import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
 const USER_CONFIG_KEY = 'HistoryDiffUserConfig';
@@ -75,10 +75,7 @@ export async function UpdateConfigDialogFieldSuggestions(fields)
 {
     await gInitConfigurationPromise;
 
-    const datalist = document.getElementById('config-dialog-suggested-fields');
-    if (!datalist) { 
-        throw new Error('HistoryDiff: HTML element not found.');
-    }
+    const datalist = GetHtmlElement('config-dialog-suggested-fields');
     datalist.replaceChildren();
     for (const field of fields) {
         if (IsFieldShownByUserConfigImpl(field)) { // Don't suggest already hidden fields.
@@ -154,21 +151,13 @@ function AnyFieldFiltersEnabled()
 
 function GetOpenFilterConfigButton()
 {
-    const button = document.getElementById('config-dialog-show');
-    if (!button) {
-        throw new Error('HistoryDiff: HTML element not found.');
-    }
-    return button;
+    return GetHtmlElement('config-dialog-show');
 }
 
 
 function GetDisabledAllFieldFiltersCheckbox()
 {
-    const checkbox = document.getElementById('config-dialog-disable-all-field-filters');
-    if (!checkbox) {
-        throw new Error('HistoryDiff: HTML element not found.');
-    }
-    return checkbox;
+    return GetHtmlElement('config-dialog-disable-all-field-filters');
 }
 
 
@@ -181,16 +170,8 @@ function UpdateFilterButton()
 
 function InitializeConfigDialog()
 {
-    const configDialog = document.getElementById('config-dialog');
-    if (!configDialog) {
-        throw new Error('HistoryDiff: HTML element not found.');
-    }
-
-    const fieldFiltersTable = document.getElementById('config-dialog-field-filters-table');
-    if (!fieldFiltersTable) {
-        throw new Error('HistoryDiff: HTML element not found.');
-    }
-
+    const configDialog = GetHtmlElement('config-dialog');
+    const fieldFiltersTable = GetHtmlElement('config-dialog-field-filters-table');
     const disabledFieldFiltersCheckbox = GetDisabledAllFieldFiltersCheckbox();
 
     GetOpenFilterConfigButton().addEventListener(
@@ -205,7 +186,7 @@ function InitializeConfigDialog()
 
     UpdateFilterButton();
 
-    document.getElementById('config-dialog-ok')?.addEventListener(
+    GetHtmlElement('config-dialog-ok').addEventListener(
         'click', 
         () => {
             SaveAllFieldFiltersFromDialog(configDialog);
@@ -215,11 +196,11 @@ function InitializeConfigDialog()
             LoadAndSetDiffInHTMLDocument();
     });
 
-    document.getElementById('config-dialog-cancel')?.addEventListener(
+    GetHtmlElement('config-dialog-cancel').addEventListener(
         // @ts-ignore
         'click', () => configDialog.close());
 
-    document.getElementById('config-dialog-add-field-filter')?.addEventListener(
+    GetHtmlElement('config-dialog-add-field-filter').addEventListener(
         'click', () => AddFieldFilterControlRowToDialog(fieldFiltersTable, ''));
 }
 

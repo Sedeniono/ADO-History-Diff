@@ -7,7 +7,7 @@ import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment 
 import { InitSharedGlobals } from './Globals.js';
 import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions } from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
-import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace } from './Utils';
+import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace, GetHtmlElement } from './Utils';
 import { GenerateCutoutsWithContext, GetLineHeightInPixel } from './GenerateCutoutsWithContext';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
 
@@ -19,11 +19,7 @@ var gUnloadedCalled = false;
 
 function GetHtmlDisplayField()
 {
-    const elem = document.getElementById('html-div-diff');
-    if (!elem) {
-        throw new Error('HistoryDiff: HTML element not found.');
-    }
-    return elem;
+    return GetHtmlElement('html-div-diff');
 }
 
 
