@@ -5,7 +5,8 @@
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
 import { InitSharedGlobals } from './Globals.js';
-import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions } from './Configuration';
+import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions, InitializeToggleContextButton } 
+    from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace, GetHtmlElement } from './Utils';
 import { GenerateCutoutsWithContext, GetLineHeightInPixel } from './GenerateCutoutsWithContext';
@@ -459,6 +460,8 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
 
     InitializeConfiguration(adoSDK);    
     await InitSharedGlobals(adoSDK, adoAPI);
+
+    InitializeToggleContextButton();
 
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.
     // This causes ADO to show the 'spinning loading indicator' until we are ready.

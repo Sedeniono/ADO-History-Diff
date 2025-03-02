@@ -141,6 +141,12 @@
             padding: 0 10px;
             margin: 1px 0 0 5px;
         }
+        button.img-button {
+            background-size: 18px;
+            background-repeat: no-repeat;
+            background-position: center;
+            vertical-align: middle;
+        }
         input {
             color: inherit;
             background-color: rgba(var(--palette-neutral-4,244, 244, 244),1);
@@ -151,7 +157,10 @@
 </head>
 
 <body>
-    <button id="config-dialog-show" style="position: absolute; top: 15px; right: 10px"><b>Filters</b></button>
+    <div style="position: absolute; top: 15px; right: 10px">
+        <button id="toggle-context" class="img-button">Toggle context</button>
+        <button id="config-dialog-show"><b>Filters</b></button>
+    </div>
     <dialog id="config-dialog" style="margin: 0; left: auto; right: 5px; top: 5px">
         <label for="config-dialog-disable-all-field-filters" style="display: inline-block; white-space: nowrap;">
             <span style="vertical-align: middle"><b>Disable all field filters:</b></span>

@@ -11,6 +11,16 @@ module.exports = {
         path: path.resolve(__dirname, 'dist'),
         clean: true
     },
+    module: {
+        rules: [{
+            test: /\.svg$/,
+            type: 'asset/inline',
+            loader: 'svgo-loader',
+            options: {
+                multipass: true,
+            }
+        }]
+    },
     plugins: [
         new webpack.optimize.LimitChunkCountPlugin({
             maxChunks: 1

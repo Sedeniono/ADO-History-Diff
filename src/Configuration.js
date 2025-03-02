@@ -7,6 +7,10 @@ import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServic
 import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils.js';
 import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
+// @ts-ignore (webpack magic)
+import DividerSplitHorizontalSvg from '../images/divider-split-horizontal-icon.svg';
+
+
 const USER_CONFIG_KEY = 'HistoryDiffUserConfig';
 
 // IExtensionDataManager: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iextensiondatamanager
@@ -253,4 +257,26 @@ function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
     newDeleteButton.addEventListener('click', () => {
         fieldFiltersTable.removeChild(newRow);
     });
+}
+
+
+let gHideUnchanged = false;
+
+function SetToggleContextButtonText()
+{
+    const toggleButton = GetHtmlElement('toggle-context');
+    toggleButton.textContent = '';
+    toggleButton.style.backgroundImage = `url(${DividerSplitHorizontalSvg})`;
+}
+
+export function InitializeToggleContextButton()
+{
+    GetHtmlElement('toggle-context').addEventListener(
+        'click', 
+        () => {
+            gHideUnchanged = !gHideUnchanged;
+            SetToggleContextButtonText();
+    });
+
+    SetToggleContextButtonText();
 }
