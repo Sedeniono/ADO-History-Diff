@@ -8,7 +8,9 @@ import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils
 import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
 // @ts-ignore (webpack magic)
-import DividerSplitHorizontalSvg from '../images/divider-split-horizontal-icon.svg';
+import DividerSplitDownSvg from '../images/divider-split-horizontal-icon-down.svg';
+// @ts-ignore (webpack magic)
+import DividerSplitUpSvg from '../images/divider-split-horizontal-icon-up.svg';
 
 
 const USER_CONFIG_KEY = 'HistoryDiffUserConfig';
@@ -260,13 +262,21 @@ function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
 }
 
 
-let gHideUnchanged = false;
+let gAllLinesCurrentlyShown = false;
 
 function SetToggleContextButtonText()
 {
     const toggleButton = GetHtmlElement('toggle-context');
     toggleButton.textContent = '';
-    toggleButton.style.backgroundImage = `url(${DividerSplitHorizontalSvg})`;
+    toggleButton.style.backgroundPosition = 'top 4px left 50%, bottom 4px left 50%';
+    if (gAllLinesCurrentlyShown) {
+        toggleButton.style.backgroundImage = `url(${DividerSplitDownSvg}), url(${DividerSplitUpSvg})`;
+        toggleButton.title = 'Hide unchanged lines.';
+    }
+    else {
+        toggleButton.style.backgroundImage = `url(${DividerSplitUpSvg}), url(${DividerSplitDownSvg})`;
+        toggleButton.title = 'Show all unchanged lines.';
+    }
 }
 
 export function InitializeToggleContextButton()
@@ -274,7 +284,7 @@ export function InitializeToggleContextButton()
     GetHtmlElement('toggle-context').addEventListener(
         'click', 
         () => {
-            gHideUnchanged = !gHideUnchanged;
+            gAllLinesCurrentlyShown = !gAllLinesCurrentlyShown;
             SetToggleContextButtonText();
     });
 
