@@ -1,5 +1,22 @@
 // @ts-check
 
+
+/**
+ * @typedef Cutout
+ * @type {object}
+ * @property {HTMLDivElement} div The html element that contains the cutout.
+ * @property {number} top The top position of the cutout in pixels. 0 means that the cutout starts at the top of the original element.
+ * @property {number} bottom The bottom position of the cutout in pixels. `originalHeight` means that the cutout ends at the bottom of the original element.
+ */
+
+/**
+ * @typedef Cutouts
+ * @type {object}
+ * @property {Cutout[]} cutouts All cutouts.
+ * @property {number} originalHeight The height of the original html element in pixels.
+ */
+
+
 // Helper function that can be used to get the line height of text in `el`.
 // Based on https://stackoverflow.com/a/4515470/3740047
 export function GetLineHeightInPixel(el)
@@ -15,25 +32,34 @@ export function GetLineHeightInPixel(el)
 }
 
 
-// The goal of this function is to take some arbitrary piece of html in `originalHtmlElement` and find
-// some specific html nodes in it + some context above and below each node. I.e. it creates new html nodes
-// that represent the context of the target nodes, where the size of the context is determined by the
-// `numContextLines` parameter (`numContextLines` above and and below, where each line is assumed to have
-// a height of `lineHeightInPixel`; the `lineHeightInPixel` can be queries via GetLineHeightInPixel()).
-// The target nodes are identified by their html element names in `targetHtmlElementNames`, such as "ins"
-// or "del".
-// If cutouts overlap or are at most `mergingToleranceInPixel` pixels away from each other, they are merged.
-//
-// Note that `originalHtmlElement` must be in the DOM (so that sizes can be calculated).
-//
-// It is actually very difficult or maybe impossible to extract some specific element + some context from an
-// arbitrary html. Consider cases where the element is e.g. in a table, or the context would need to cut-off
-// some table or image, or if the element is in the middle of an enumeration. Getting a standalone "context"
-// html is basically impossible.
-// Therefore, a different approach is chosen here: We create a **full** clone of the whole `originalHtmlElement`,
-// put it into a "div" with a height matching the target node, and then use the css property `overflow` to 
-// actually only show the desired "slice". If there are multiple target nodes in `originalHtmlElement`, we
-// create a full clone each time of `originalHtmlElement` but show a different "slice" each time.
+/**
+ * The goal of this function is to take some arbitrary piece of html in `originalHtmlElement` and find
+ * some specific html nodes in it + some context above and below each node. I.e. it creates new html nodes
+ * that represent the context of the target nodes, where the size of the context is determined by the
+ * `numContextLines` parameter (`numContextLines` above and and below, where each line is assumed to have
+ * a height of `lineHeightInPixel`; the `lineHeightInPixel` can be queries via GetLineHeightInPixel()).
+ * The target nodes are identified by their html element names in `targetHtmlElementNames`, such as "ins"
+ * or "del".
+ * If cutouts overlap or are at most `mergingToleranceInPixel` pixels away from each other, they are merged.
+ *
+ * Note that `originalHtmlElement` must be in the DOM (so that sizes can be calculated).
+ *
+ * It is actually very difficult or maybe impossible to extract some specific element + some context from an
+ * arbitrary html. Consider cases where the element is e.g. in a table, or the context would need to cut-off
+ * some table or image, or if the element is in the middle of an enumeration. Getting a standalone "context"
+ * html is basically impossible.
+ * Therefore, a different approach is chosen here: We create a **full** clone of the whole `originalHtmlElement`,
+ * put it into a "div" with a height matching the target node, and then use the css property `overflow` to 
+ * actually only show the desired "slice". If there are multiple target nodes in `originalHtmlElement`, we
+ * create a full clone each time of `originalHtmlElement` but show a different "slice" each time.
+ * 
+ * @returns {Promise<Cutouts|undefined>} The cutouts or `undefined` if no cutouts could be found.
+ * @param {HTMLTableCellElement} originalHtmlElement
+ * @param {string[]} targetHtmlElementNames
+ * @param {number} numContextLines
+ * @param {number} lineHeightInPixel
+ * @param {number} mergingToleranceInPixel
+ */
 export async function GenerateCutoutsWithContext(
     originalHtmlElement, targetHtmlElementNames, numContextLines, lineHeightInPixel, mergingToleranceInPixel)
 {
@@ -62,7 +88,9 @@ export async function GenerateCutoutsWithContext(
     // contexts on successive lines.
     const numContextInPixel = numContextLines * lineHeightInPixel + 1;
 
+    /** @type {Cutout[]} */
     let cutouts = [];
+
     let prevCutout = null;
     const origTargetNodes = originalHtmlElement.querySelectorAll(targetHtmlElementNames.join(","));
     for (const origTargetNode of origTargetNodes) {
@@ -141,7 +169,6 @@ export async function GenerateCutoutsWithContext(
 
     return {cutouts, originalHeight: origRect.height};
 }
-
 
 
 function GetTopAndBottomPositionOf(htmlNode)
