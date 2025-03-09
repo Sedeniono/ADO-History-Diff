@@ -5,7 +5,7 @@
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
 import { InitSharedGlobals } from './Globals.js';
-import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions, InitializeToggleContextButton } 
+import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions, InitializeToggleContextButton, gAllLinesCurrentlyShown } 
     from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace, GetHtmlElement } from './Utils';
@@ -164,7 +164,11 @@ export async function LoadAndSetDiffInHTMLDocument()
 
     const displayField = GetHtmlDisplayField();
     displayField.textContent = '';
+    const lineHeight = GetLineHeightInPixel(displayField);
     displayField.appendChild(updateHtml.div);
+
+    gLineHeightInPixel = null;
+    gCurrentlyShownUpdates = null;
     
     // To make it easier for the user to enter new filters, add the rows as datalist
     // to the dialog.
@@ -177,41 +181,103 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Config for number of context lines
     // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
     // - Dark theme colors
-    const lineHeight = GetLineHeightInPixel(displayField);
     const numContextLines = 2; // TODO: Config
     const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeight) : 0;
     let allCellPromises = [];
-    for (const cell of updateHtml.allContentCells) {
-        const promise = GenerateCutoutsWithContext(cell, ['ins', 'del'], numContextLines, lineHeight, mergingTolerance)
+    updateHtml.infosPerCell = Array(updateHtml.allContentCellsInDOM.length);
+    for (let cellIdx = 0; cellIdx < updateHtml.allContentCellsInDOM.length; ++cellIdx) {
+        // cellInDOM is a <td> element in the right column of the table, containing the info about a single update
+        // and including <ins> and <del> elements. The <td> element has already been inserted into the DOM, which is
+        // important for GenerateCutoutsWithContext() to work properly. 
+        const tdCellInDOM = updateHtml.allContentCellsInDOM[cellIdx];
+        const promise = GenerateCutoutsWithContext(tdCellInDOM, ['ins', 'del'], numContextLines, lineHeight, mergingTolerance)
             .then(cutoutInfos => {
-                if (cutoutInfos && cutoutInfos.cutouts && cutoutInfos.cutouts.length > 0) {
-                    cell.textContent = '';
-                    const cutouts = cutoutInfos.cutouts;
-
-                    const firstCutoutStartsAtTop = cutouts[0].top <= 0;
-                    if (!firstCutoutStartsAtTop) {
-                        const numHiddenLines = Math.ceil(cutouts[0].top / lineHeight);
-                        cell.appendChild(CreateCutoutBorderDiv('cutout-border-at-top', numHiddenLines));
-                    }
-
-                    for (let cutoutIdx = 0; cutoutIdx < cutouts.length - 1; ++cutoutIdx) {
-                        cell.appendChild(cutouts[cutoutIdx].div);
-                        const numHiddenLines = Math.ceil((cutouts[cutoutIdx + 1].top - cutouts[cutoutIdx].bottom) / lineHeight);
-                        cell.appendChild(CreateCutoutBorderDiv('cutout-border-in-middle', numHiddenLines));
-                    }
-
-                    const finalCutout = cutouts[cutouts.length - 1];
-                    cell.appendChild(finalCutout.div);
-                    const finalCutoutEndsAtBottom = finalCutout.bottom >= cutoutInfos.originalHeight;
-                    if (!finalCutoutEndsAtBottom) {
-                        const numHiddenLines = Math.ceil((cutoutInfos.originalHeight - finalCutout.bottom) / lineHeight);
-                        cell.appendChild(CreateCutoutBorderDiv('cutout-border-at-bottom', numHiddenLines));
-                    }
-                }
+                updateHtml.infosPerCell[cellIdx] = {
+                    cloneOfTdContentCell_notInDOM: tdCellInDOM.cloneNode(true), 
+                    cutoutInfos: cutoutInfos
+                };
             });
         allCellPromises.push(promise);
     }
     await Promise.all(allCellPromises);
+
+    gLineHeightInPixel = lineHeight;
+    gCurrentlyShownUpdates = updateHtml;
+
+    ShowOrHideUnchangedLinesDependingOnConfiguration();
+}
+
+/** @type {number|null} */
+let gLineHeightInPixel = null;
+
+/** @type {null|{div: HTMLDivElement, allContentCellsInDOM: HTMLTableCellElement[], infosPerCell: {cloneOfTdContentCell_notInDOM: HTMLTableCellElement, cutoutInfos: any}[]}} */
+let gCurrentlyShownUpdates = null;
+
+export function ShowOrHideUnchangedLinesDependingOnConfiguration()
+{
+    if (gAllLinesCurrentlyShown) {
+        ShowAllLines();
+    } 
+    else {
+        ShowOnlyContextCutouts();
+    }
+}
+
+function ShowOnlyContextCutouts()
+{
+    if (!gLineHeightInPixel || !gCurrentlyShownUpdates || !gCurrentlyShownUpdates.infosPerCell || gCurrentlyShownUpdates.infosPerCell.length === 0) {
+        return;
+    }
+
+    for (let cellIdx = 0; cellIdx < gCurrentlyShownUpdates.infosPerCell.length; ++cellIdx) {
+        const cellInDOM = gCurrentlyShownUpdates.allContentCellsInDOM[cellIdx];
+        const cutoutInfos = gCurrentlyShownUpdates.infosPerCell[cellIdx].cutoutInfos;
+        if (cutoutInfos && cutoutInfos.cutouts && cutoutInfos.cutouts.length > 0) {
+            cellInDOM.textContent = '';
+            const cutouts = cutoutInfos.cutouts;
+
+            const firstCutoutStartsAtTop = cutouts[0].top <= 0;
+            if (!firstCutoutStartsAtTop) {
+                const numHiddenLines = Math.ceil(cutouts[0].top / gLineHeightInPixel);
+                cellInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-top', numHiddenLines));
+            }
+
+            for (let cutoutIdx = 0; cutoutIdx < cutouts.length - 1; ++cutoutIdx) {
+                cellInDOM.appendChild(cutouts[cutoutIdx].div);
+                const numHiddenLines = Math.ceil((cutouts[cutoutIdx + 1].top - cutouts[cutoutIdx].bottom) / gLineHeightInPixel);
+                cellInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-in-middle', numHiddenLines));
+            }
+
+            const finalCutout = cutouts[cutouts.length - 1];
+            cellInDOM.appendChild(finalCutout.div);
+            const finalCutoutEndsAtBottom = finalCutout.bottom >= cutoutInfos.originalHeight;
+            if (!finalCutoutEndsAtBottom) {
+                const numHiddenLines = Math.ceil((cutoutInfos.originalHeight - finalCutout.bottom) / gLineHeightInPixel);
+                cellInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-bottom', numHiddenLines));
+            }
+
+            for (const cutout of cutouts) {
+                cutout.div.scroll({left: 0, top: cutout.top, behavior: "instant"});
+            }
+        }
+    }
+}
+
+function ShowAllLines()
+{
+    if (!gLineHeightInPixel || !gCurrentlyShownUpdates || !gCurrentlyShownUpdates.infosPerCell || gCurrentlyShownUpdates.infosPerCell.length === 0) {
+        return;
+    }
+
+    for (let cellIdx = 0; cellIdx < gCurrentlyShownUpdates.infosPerCell.length; ++cellIdx) {
+        const cellInDOM = gCurrentlyShownUpdates.allContentCellsInDOM[cellIdx];
+        const cloneOfTdContentCell_notInDOM = gCurrentlyShownUpdates.infosPerCell[cellIdx].cloneOfTdContentCell_notInDOM;
+        cellInDOM.textContent = '';
+        for (const child of cloneOfTdContentCell_notInDOM.childNodes) {
+            // TODO: clone???????
+            cellInDOM.appendChild(child.cloneNode(true));
+        }
+    }
 }
 
 
@@ -248,17 +314,19 @@ async function FilterTablesInPlace(allUpdateTables)
 
 function CreateHTMLForAllUpdates(allUpdateTables)
 {
-    let allContentCells = [];
+    /** @type {HTMLTableCellElement[]} */
+    let allContentCellsInDOM = [];
+
     const div = document.createElement('div');
     for (const updateInfo of allUpdateTables) {
         const html = CreateHTMLForUpdateOnSingleDate(updateInfo);
         if (html && html.div) {
             const hr = document.createElement('hr');
             div.append(hr, html.div);
-            allContentCells.push.apply(allContentCells, html.allContentCells);
+            allContentCellsInDOM.push.apply(allContentCellsInDOM, html.allContentCells);
         }
     }
-    return {div, allContentCells};
+    return {div, allContentCellsInDOM};
 }
 
 

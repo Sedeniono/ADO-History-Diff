@@ -5,7 +5,7 @@
 
 import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServices';
 import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils.js';
-import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
+import { LoadAndSetDiffInHTMLDocument, ShowOrHideUnchangedLinesDependingOnConfiguration } from './HistoryDiffPageScript.js';
 
 // @ts-ignore (webpack magic)
 import DividerSplitDownSvg from '../images/divider-split-horizontal-icon-down.svg';
@@ -262,7 +262,7 @@ function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
 }
 
 
-let gAllLinesCurrentlyShown = false;
+export let gAllLinesCurrentlyShown = false;
 
 function SetToggleContextButtonText()
 {
@@ -285,7 +285,9 @@ export function InitializeToggleContextButton()
         'click', 
         () => {
             gAllLinesCurrentlyShown = !gAllLinesCurrentlyShown;
+            // TODO: Store config
             SetToggleContextButtonText();
+            ShowOrHideUnchangedLinesDependingOnConfiguration();
     });
 
     SetToggleContextButtonText();
