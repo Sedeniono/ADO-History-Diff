@@ -91,6 +91,9 @@
             background-color: #fff2e0;
             height: 20px;
             color: #c8c8c8;
+            position: relative;
+            display: flex;
+            align-items: center;;
         }
         .cutout-border-at-top {
             border-bottom: 1px solid black;
@@ -142,10 +145,18 @@
             padding: 0 10px;
             margin: 1px 0 0 5px;
         }
-        button.img-button {
+        button.img-button-large {
             background-size: 18px;
             background-repeat: no-repeat;
             background-position: center;
+        }
+        button.img-button-in-cutout-border {
+            background-size: 14px;
+            background-repeat: no-repeat;
+            background-position: center;
+            height: 20px; /* Same as cutout-border-base */
+            padding: 0 15px;
+            margin-right: 5px;
         }
         input {
             color: inherit;
@@ -158,7 +169,7 @@
 
 <body>
     <div style="position: absolute; top: 15px; right: 10px">
-        <button id="toggle-context" class="img-button">Toggle context</button>
+        <button id="toggle-context" class="img-button-large">Toggle context</button>
         <button id="config-dialog-show"><b>Filters</b></button>
     </div>
     <dialog id="config-dialog" style="margin: 0; left: auto; right: 5px; top: 5px">

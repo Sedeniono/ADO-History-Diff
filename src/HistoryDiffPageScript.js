@@ -12,6 +12,11 @@ import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace, GetH
 import { GenerateCutoutsWithContext, GetLineHeightInPixel } from './GenerateCutoutsWithContext';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
 
+// @ts-ignore (webpack magic)
+import DividerSplitDownSvg from '../images/divider-split-horizontal-icon-down.svg';
+// @ts-ignore (webpack magic)
+import DividerSplitUpSvg from '../images/divider-split-horizontal-icon-up.svg';
+
 
 var gAdoSDK;
 var gAdoAPI;
@@ -315,10 +320,20 @@ function ShowAllLines()
 
 function CreateCutoutBorderDiv(positionClass, numHiddenLines)
 {
+    const showContextButton = document.createElement('button');
+    showContextButton.classList.add('img-button-in-cutout-border');
+    showContextButton.style.backgroundPosition = 'top 1px left 50%, bottom 1px left 50%';
+    showContextButton.style.backgroundImage = `url(${DividerSplitUpSvg}), url(${DividerSplitDownSvg})`;
+    showContextButton.title = 'Show hidden lines.';
+
+    const hiddenLinesText = document.createTextNode(
+        numHiddenLines === 1 ? `1 hidden line` : `${numHiddenLines} hidden lines`);
+    
     const borderDiv = document.createElement('div');
     borderDiv.classList.add('cutout-border-base');
     borderDiv.classList.add(positionClass);
-    borderDiv.textContent = numHiddenLines === 1 ? `1 hidden line` : `${numHiddenLines} hidden lines`;
+    borderDiv.append(showContextButton, hiddenLinesText);
+
     return borderDiv;
 }
 
