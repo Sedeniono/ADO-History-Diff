@@ -187,6 +187,7 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
     // - Dark theme colors
     // - Handle no ins/del elements.
+    // - Allow hiding the un-hidden lines again.
     const numContextLines = 2; // TODO: Config
     const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeight) : 0;
     let allCellPromises = [];
@@ -326,7 +327,7 @@ function CreateCutoutBorderDiv(positionClass, numHiddenLines, singleUpdateCell, 
 {
     const showContextButton = document.createElement('button');
     showContextButton.classList.add('img-button-in-cutout-border');
-    showContextButton.style.backgroundPosition = 'top 1px left 50%, bottom 1px left 50%';
+    showContextButton.style.backgroundPosition = 'top 0.5px left 50%, bottom 0.5px left 50%';
     showContextButton.style.backgroundImage = `url(${DividerSplitUpSvg}), url(${DividerSplitDownSvg})`;
     showContextButton.title = 'Show hidden lines.';
 
