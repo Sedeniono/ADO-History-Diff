@@ -192,10 +192,12 @@ export async function LoadAndSetDiffInHTMLDocument()
     let allCellPromises = [];
     for (let cellIdx = 0; cellIdx < updateHtml.allContentCells.length; ++cellIdx) {
         // singleUpdate.tdCell is a <td> element in the right column of the table, containing the info about a single update
-        // and including <ins> and <del> elements. The <td> element has already been inserted into the DOM, which is
-        // important for GenerateCutoutsWithContext() to work properly. 
+        // and including <ins> and <del> elements. singleUpdate.fullContentDiv is the <div> in the <td> that contains the data.
+        // The <td> element has already been inserted into the DOM, which is important for GenerateCutoutsWithContext() to work
+        // properly. Also, it is important to pass in the <div> rather than the <td> so that extents are measured only for the
+        // cell content rather than the whole cell.
         const singleUpdate = updateHtml.allContentCells[cellIdx];
-        const promise = GenerateCutoutsWithContext(singleUpdate.tdCell, ['ins', 'del'], numContextLines, lineHeight, mergingTolerance)
+        const promise = GenerateCutoutsWithContext(singleUpdate.fullContentDiv, ['ins', 'del'], numContextLines, lineHeight, mergingTolerance)
             .then(cutoutInfos => {
                 singleUpdate.cutouts = cutoutInfos ?? null;
             });
@@ -215,6 +217,7 @@ export async function LoadAndSetDiffInHTMLDocument()
  * @type {object}
  * @property {HTMLTableCellElement} tdCell The <td> element in the right column of the table, containing the info about a single update.
  *   The element ends up in the DOM. Its content is replaced dynamically depending on the user's configuration.
+ * @property {HTMLDivElement} fullContentDiv The div in tdCell.
  * @property {import("./GenerateCutoutsWithContext").Cutouts | null} cutouts The cutout contexts. If null, no cutouts could be found.
  * @property {HTMLDivElement} fullContentDiv_notInDOM The div that contains the full content of the update, i.e. no cutouts. It is never in the DOM.
  */
@@ -406,13 +409,10 @@ function CreateHTMLForAllUpdates(allUpdateTables)
             allUpdatesDiv.append(hr, html.div);
 
             for (const cell of html.allContentCells) {
-                const fullContentDiv = document.createElement('div');
-                for (const child of cell.childNodes) {
-                    fullContentDiv.appendChild(child.cloneNode(true));
-                }
                 allContentCells.push({
-                    tdCell: cell, 
-                    fullContentDiv_notInDOM: fullContentDiv, 
+                    tdCell: cell.tdContent,
+                    fullContentDiv: cell.divContent,
+                    fullContentDiv_notInDOM: cell.divContent.cloneNode(true), 
                     cutouts: null,
                 });
             }
@@ -459,10 +459,14 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
         tdName.classList.add('diff-class');
         tdName.innerHTML = row.rowName;
         
+        const divContent = document.createElement('div');
+        divContent.classList.add('diff-class');
+        divContent.innerHTML = row.content;
+
         const tdContent = document.createElement('td');
         tdContent.classList.add('diff-class');
-        tdContent.innerHTML = row.content;
-        allContentCells.push(tdContent);
+        tdContent.appendChild(divContent);
+        allContentCells.push({tdContent, divContent});
 
         tr.append(tdName, tdContent);
         tbody.appendChild(tr);

@@ -54,7 +54,7 @@ export function GetLineHeightInPixel(el)
  * create a full clone each time of `originalHtmlElement` but show a different "slice" each time.
  * 
  * @returns {Promise<Cutouts|undefined>} The cutouts or `undefined` if no cutouts could be found.
- * @param {HTMLTableCellElement} originalHtmlElement
+ * @param {Element} originalHtmlElement
  * @param {string[]} targetHtmlElementNames
  * @param {number} numContextLines
  * @param {number} lineHeightInPixel
