@@ -13,7 +13,7 @@
  * @typedef Cutouts
  * @type {object}
  * @property {Cutout[]} cutouts All cutouts.
- * @property {number} originalHeight The height of the original html element in pixels.
+ * @property {number} originalHeight The total height of the original html element in pixels, from which the cutouts were generated.
  */
 
 

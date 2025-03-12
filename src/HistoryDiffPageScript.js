@@ -186,6 +186,7 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Config for number of context lines
     // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
     // - Dark theme colors
+    // - Handle no ins/del elements.
     const numContextLines = 2; // TODO: Config
     const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeight) : 0;
     let allCellPromises = [];
@@ -249,31 +250,30 @@ export function ShowOrHideUnchangedLinesDependingOnConfiguration()
 
 
 /**
- * @param {HTMLDivElement} htmlElementInDOM All children of this element will be replaced with the cutouts.
- *   It must be in the DOM because otherwise the cutout contexts show the wrong position (because the scrolling
- *   doesn't work).
- * @param {import("./GenerateCutoutsWithContext").Cutouts | undefined} cutoutInfos
+ * @param {SingleUpdateCell} singleUpdateCell
  * @param {number} lineHeightInPixel
  */
-function ReplaceHtmlChildrenWithCutouts(htmlElementInDOM, cutoutInfos, lineHeightInPixel)
+function ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, lineHeightInPixel)
 {
+    const cutoutInfos = singleUpdateCell.cutouts;
     if (!cutoutInfos || !cutoutInfos.cutouts || cutoutInfos.cutouts.length === 0) {
         return;
     }
-
+    
+    const htmlElementInDOM = singleUpdateCell.tdCell;
     htmlElementInDOM.textContent = '';
     const cutouts = cutoutInfos.cutouts;
 
     const firstCutoutStartsAtTop = cutouts[0].top <= 0;
     if (!firstCutoutStartsAtTop) {
         const numHiddenLines = Math.ceil(cutouts[0].top / lineHeightInPixel);
-        htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-top', numHiddenLines));
+        htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-top', numHiddenLines, singleUpdateCell, 0));
     }
 
     for (let cutoutIdx = 0; cutoutIdx < cutouts.length - 1; ++cutoutIdx) {
         htmlElementInDOM.appendChild(cutouts[cutoutIdx].div);
         const numHiddenLines = Math.ceil((cutouts[cutoutIdx + 1].top - cutouts[cutoutIdx].bottom) / lineHeightInPixel);
-        htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-in-middle', numHiddenLines));
+        htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-in-middle', numHiddenLines, singleUpdateCell, cutoutIdx + 1));
     }
 
     const finalCutout = cutouts[cutouts.length - 1];
@@ -281,7 +281,7 @@ function ReplaceHtmlChildrenWithCutouts(htmlElementInDOM, cutoutInfos, lineHeigh
     const finalCutoutEndsAtBottom = finalCutout.bottom >= cutoutInfos.originalHeight;
     if (!finalCutoutEndsAtBottom) {
         const numHiddenLines = Math.ceil((cutoutInfos.originalHeight - finalCutout.bottom) / lineHeightInPixel);
-        htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-bottom', numHiddenLines));
+        htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-bottom', numHiddenLines, singleUpdateCell, cutouts.length));
     }
 
     for (const cutout of cutouts) {
@@ -298,9 +298,7 @@ function ShowOnlyContextCutouts()
     }
 
     for (const cell of gCurrentlyShownUpdates.allContentCells) {
-        if (cell.cutouts) {
-            ReplaceHtmlChildrenWithCutouts(cell.tdCell, cell.cutouts, gLineHeightInPixels);
-        }
+        ReplaceHtmlChildrenOfCellWithCutouts(cell, gLineHeightInPixels);
     }
 }
 
@@ -318,7 +316,10 @@ function ShowAllLines()
 }
 
 
-function CreateCutoutBorderDiv(positionClass, numHiddenLines)
+/**
+ * @param {SingleUpdateCell} singleUpdateCell
+ */
+function CreateCutoutBorderDiv(positionClass, numHiddenLines, singleUpdateCell, indexOfCutoutAfterwards)
 {
     const showContextButton = document.createElement('button');
     showContextButton.classList.add('img-button-in-cutout-border');
@@ -333,6 +334,35 @@ function CreateCutoutBorderDiv(positionClass, numHiddenLines)
     borderDiv.classList.add('cutout-border-base');
     borderDiv.classList.add(positionClass);
     borderDiv.append(showContextButton, hiddenLinesText);
+
+    showContextButton.onclick = () => {
+        if (gAllLinesCurrentlyShown || !gCurrentlyShownUpdates || !singleUpdateCell.cutouts
+            || indexOfCutoutAfterwards < 0 || indexOfCutoutAfterwards > singleUpdateCell.cutouts.cutouts.length) {
+            return;
+        }
+        if (indexOfCutoutAfterwards === 0) {
+            const firstCutout = singleUpdateCell.cutouts.cutouts[0];
+            firstCutout.top = 0;
+            firstCutout.div.style.height = `${firstCutout.bottom}px`;
+        }
+        else if (indexOfCutoutAfterwards === singleUpdateCell.cutouts.cutouts.length) {
+            const finalCutout = singleUpdateCell.cutouts.cutouts[singleUpdateCell.cutouts.cutouts.length - 1];
+            finalCutout.bottom = singleUpdateCell.cutouts.originalHeight;
+            finalCutout.div.style.height = `${finalCutout.bottom - finalCutout.top}px`;
+        }
+        else {
+            const cutoutBefore = singleUpdateCell.cutouts.cutouts[indexOfCutoutAfterwards - 1];
+            const cutoutAfter = singleUpdateCell.cutouts.cutouts[indexOfCutoutAfterwards];
+            cutoutBefore.bottom = cutoutAfter.bottom;
+            cutoutBefore.div.style.height = `${cutoutBefore.bottom - cutoutBefore.top}px`;
+            singleUpdateCell.cutouts.cutouts.splice(indexOfCutoutAfterwards, 1);
+        }
+
+        // We need to scroll the elements to the correct position and remove the borderDiv. Moreover, we need to 
+        // update the captured indices (i.e. the captured `indexOfCutoutAfterwards`) of the buttons coming after
+        // our button. Or, simpler, we rebuild the whole cell.
+        ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, gLineHeightInPixels);
+    };
 
     return borderDiv;
 }
