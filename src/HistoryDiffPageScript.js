@@ -9,7 +9,7 @@ import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFi
     from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace, GetHtmlElement } from './Utils';
-import { GenerateCutoutsWithContext, GetLineHeightInPixel } from './GenerateCutoutsWithContext';
+import { GenerateCutoutsWithContext, GetLineHeightInPixel, DeepCloneCutouts } from './GenerateCutoutsWithContext';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
 
 // @ts-ignore (webpack magic)
@@ -222,6 +222,9 @@ export async function LoadAndSetDiffInHTMLDocument()
  *   The element ends up in the DOM. Its content is replaced dynamically depending on the user's configuration.
  * @property {HTMLDivElement} divFullContent The <div> in tdCell that contains the full content of the update, i.e. no cutouts.
  * @property {import("./GenerateCutoutsWithContext").Cutouts | null} cutouts The cutout contexts. If null, no cutouts could be found.
+ * @property {import("./GenerateCutoutsWithContext").Cutouts | null} origCutouts The user can use buttons to remove and change elements
+ *   in the `cutouts` property. This is the original cutouts that we created at the beginning. Note that this is set the first time
+ *   we modify the `cutouts`. So it is either null if there are no cutouts, or if the `cutouts` had not been modified yet.
  */
 
 
@@ -303,6 +306,15 @@ function ShowOnlyContextCutouts()
     }
 
     for (const cell of gCurrentlyShownUpdates.allContentCells) {
+        if (!cell.cutouts) {
+            continue;
+        }
+        // If the cutouts had been modified by the user, restore them now. That way the user can restore
+        // the original view by clicking on the 'toggle-context' button twice.
+        if (cell.origCutouts) {
+            cell.cutouts = cell.origCutouts;
+            cell.origCutouts = null;
+        }
         ReplaceHtmlChildrenOfCellWithCutouts(cell, gLineHeightInPixels);
     }
 }
@@ -345,6 +357,12 @@ function CreateCutoutBorderDiv(positionClass, numHiddenLines, singleUpdateCell, 
             || indexOfCutoutAfterwards < 0 || indexOfCutoutAfterwards > singleUpdateCell.cutouts.cutouts.length) {
             return;
         }
+
+        // If we haven't done a backup of the original cutouts yet, do it now.
+        if (!singleUpdateCell.origCutouts) {
+            singleUpdateCell.origCutouts = DeepCloneCutouts(singleUpdateCell.cutouts);
+        }
+
         if (indexOfCutoutAfterwards === 0) {
             const firstCutout = singleUpdateCell.cutouts.cutouts[0];
             firstCutout.top = 0;
@@ -415,6 +433,7 @@ function CreateHTMLForAllUpdates(allUpdateTables)
                     tdCell: cell.tdContent,
                     divFullContent: cell.divContent,
                     cutouts: null,
+                    origCutouts: null,
                 });
             }
         }

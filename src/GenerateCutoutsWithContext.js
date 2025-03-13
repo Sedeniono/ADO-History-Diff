@@ -17,8 +17,13 @@
  */
 
 
-// Helper function that can be used to get the line height of text in `el`.
-// Based on https://stackoverflow.com/a/4515470/3740047
+
+/**
+ * Helper function that can be used to get the line height of text in `el`.
+ * Based on https://stackoverflow.com/a/4515470/3740047
+ * 
+ * @param {HTMLElement} el 
+ */
 export function GetLineHeightInPixel(el)
 {
     const temp = document.createElement(el.nodeName);
@@ -27,8 +32,28 @@ export function GetLineHeightInPixel(el)
 
     document.body.appendChild(temp);
     const ret = temp.clientHeight;
-    temp.parentNode.removeChild(temp);
+    temp.parentNode?.removeChild(temp);
     return ret;
+}
+
+
+/**
+ * Helper function to create a deep copy of the cutouts.
+ * @param {Cutouts} cutouts The cutouts to clone.
+ */
+export function DeepCloneCutouts(cutouts)
+{
+    /** @type {Cutouts} */
+    const cutoutsClone = {cutouts: [], originalHeight: cutouts.originalHeight};
+    for (const cutout of cutouts.cutouts) {
+        const cutoutClone = {
+            div: /** @type {HTMLDivElement} */ (cutout.div.cloneNode(true)), 
+            top: cutout.top, 
+            bottom: cutout.bottom
+        };
+        cutoutsClone.cutouts.push(cutoutClone);
+    }
+    return cutoutsClone;
 }
 
 
