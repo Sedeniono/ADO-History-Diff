@@ -170,7 +170,7 @@ export async function LoadAndSetDiffInHTMLDocument()
     const displayField = GetHtmlDisplayField();
     displayField.textContent = '';
     const lineHeight = GetLineHeightInPixel(displayField);
-    displayField.appendChild(updateHtml.allUpdatesDiv);
+    displayField.appendChild(updateHtml.divAllUpdates);
 
     gLineHeightInPixels = null;
     gCurrentlyShownUpdates = null;
@@ -195,12 +195,12 @@ export async function LoadAndSetDiffInHTMLDocument()
     let allCellPromises = [];
     for (let cellIdx = 0; cellIdx < updateHtml.allContentCells.length; ++cellIdx) {
         // singleUpdate.tdCell is a <td> element in the right column of the table, containing the info about a single update
-        // and including <ins> and <del> elements. singleUpdate.fullContentDiv is the <div> in the <td> that contains the data.
+        // and including <ins> and <del> elements. singleUpdate.divFullContent is the <div> in the <td> that contains the data.
         // They have already been inserted into the DOM, which is important for GenerateCutoutsWithContext() to work properly. 
         // Also, it is important to pass in the <div> rather than the <td> so that extents are measured only for the cell 
         // content rather than the whole cell.
         const singleUpdate = updateHtml.allContentCells[cellIdx];
-        const promise = GenerateCutoutsWithContext(singleUpdate.fullContentDiv, ['ins', 'del'], numContextLines, lineHeight, mergingTolerance)
+        const promise = GenerateCutoutsWithContext(singleUpdate.divFullContent, ['ins', 'del'], numContextLines, lineHeight, mergingTolerance)
             .then(cutoutInfos => {
                 singleUpdate.cutouts = cutoutInfos ?? null;
             });
@@ -220,7 +220,7 @@ export async function LoadAndSetDiffInHTMLDocument()
  * @type {object}
  * @property {HTMLTableCellElement} tdCell The <td> element in the right column of the table, containing the info about a single update.
  *   The element ends up in the DOM. Its content is replaced dynamically depending on the user's configuration.
- * @property {HTMLDivElement} fullContentDiv The <div> in tdCell that contains the full content of the update, i.e. no cutouts.
+ * @property {HTMLDivElement} divFullContent The <div> in tdCell that contains the full content of the update, i.e. no cutouts.
  * @property {import("./GenerateCutoutsWithContext").Cutouts | null} cutouts The cutout contexts. If null, no cutouts could be found.
  */
 
@@ -229,7 +229,7 @@ export async function LoadAndSetDiffInHTMLDocument()
 /**
  * @typedef AllUpdates
  * @type {object}
- * @property {HTMLDivElement} allUpdatesDiv HTML node containing everything (all tables, including the separator 
+ * @property {HTMLDivElement} divAllUpdates HTML node containing everything (all tables, including the separator 
  *   between the tables). Ends up in the DOM.
  * @property {SingleUpdateCell[]} allContentCells All the content cells (= the right column of the tables) that 
  *   contain the actual update information. The cells of different updates are simply appended to this array.
@@ -316,7 +316,7 @@ function ShowAllLines()
 
     for (const cell of gCurrentlyShownUpdates.allContentCells) {
         cell.tdCell.textContent = '';
-        cell.tdCell.appendChild(cell.fullContentDiv);
+        cell.tdCell.appendChild(cell.divFullContent);
     }
 }
 
@@ -403,23 +403,23 @@ function CreateHTMLForAllUpdates(allUpdateTables)
     /** @type {SingleUpdateCell[]} */
     let allContentCells = [];
 
-    const allUpdatesDiv = document.createElement('div');
+    const divAllUpdates = document.createElement('div');
     for (const updateInfo of allUpdateTables) {
         const html = CreateHTMLForUpdateOnSingleDate(updateInfo);
         if (html && html.div) {
             const hr = document.createElement('hr');
-            allUpdatesDiv.append(hr, html.div);
+            divAllUpdates.append(hr, html.div);
 
             for (const cell of html.allContentCells) {
                 allContentCells.push({
                     tdCell: cell.tdContent,
-                    fullContentDiv: cell.divContent,
+                    divFullContent: cell.divContent,
                     cutouts: null,
                 });
             }
         }
     }
-    return {allUpdatesDiv, allContentCells};
+    return {divAllUpdates, allContentCells};
 }
 
 
