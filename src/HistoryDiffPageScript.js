@@ -187,9 +187,7 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
     // - Dark theme colors
     // - Handle no ins/del elements.
-    // - Allow hiding the un-hidden lines again.
     // - Merge the two images, for better zooming behavior.
-    // - "Scroll anchoring": When un-hiding lines, keep the cutout in the same position. https://stackoverflow.com/q/62559975/3740047 and https://stackoverflow.com/q/34405134/3740047
     const numContextLines = 2; // TODO: Config
     const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeight) : 0;
     let allCellPromises = [];
@@ -365,8 +363,16 @@ function CreateCutoutBorderDiv(positionClass, numHiddenLines, singleUpdateCell, 
 
         if (indexOfCutoutAfterwards === 0) {
             const firstCutout = singleUpdateCell.cutouts.cutouts[0];
+            const heightAddedAbove = firstCutout.top - borderDiv.getBoundingClientRect().height;
+
             firstCutout.top = 0;
             firstCutout.div.style.height = `${firstCutout.bottom}px`;
+            
+            // Keep the viewport constant on the cutout part that we had already shown.
+            // Note: For the final cutout, this happens automatically. For middle cutouts, we obviously cannot have the cutout
+            // below and above remain constant in the viewport simultaneously, since additional lines are shown in-between them.
+            // So one has to jump. By doing nothing, the cutout above remains constant. => scrollBy() called only for the first cutout.
+            document.documentElement.scrollBy({left: 0, top: heightAddedAbove, behavior: "instant"});
         }
         else if (indexOfCutoutAfterwards === singleUpdateCell.cutouts.cutouts.length) {
             const finalCutout = singleUpdateCell.cutouts.cutouts[singleUpdateCell.cutouts.cutouts.length - 1];
