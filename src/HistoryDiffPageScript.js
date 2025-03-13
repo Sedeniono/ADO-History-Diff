@@ -188,15 +188,17 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Dark theme colors
     // - Handle no ins/del elements.
     // - Allow hiding the un-hidden lines again.
+    // - Merge the two images, for better zooming behavior.
+    // - "Scroll anchoring": When un-hiding lines, keep the cutout in the same position. https://stackoverflow.com/q/62559975/3740047 and https://stackoverflow.com/q/34405134/3740047
     const numContextLines = 2; // TODO: Config
     const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeight) : 0;
     let allCellPromises = [];
     for (let cellIdx = 0; cellIdx < updateHtml.allContentCells.length; ++cellIdx) {
         // singleUpdate.tdCell is a <td> element in the right column of the table, containing the info about a single update
         // and including <ins> and <del> elements. singleUpdate.fullContentDiv is the <div> in the <td> that contains the data.
-        // The <td> element has already been inserted into the DOM, which is important for GenerateCutoutsWithContext() to work
-        // properly. Also, it is important to pass in the <div> rather than the <td> so that extents are measured only for the
-        // cell content rather than the whole cell.
+        // They have already been inserted into the DOM, which is important for GenerateCutoutsWithContext() to work properly. 
+        // Also, it is important to pass in the <div> rather than the <td> so that extents are measured only for the cell 
+        // content rather than the whole cell.
         const singleUpdate = updateHtml.allContentCells[cellIdx];
         const promise = GenerateCutoutsWithContext(singleUpdate.fullContentDiv, ['ins', 'del'], numContextLines, lineHeight, mergingTolerance)
             .then(cutoutInfos => {
@@ -218,9 +220,8 @@ export async function LoadAndSetDiffInHTMLDocument()
  * @type {object}
  * @property {HTMLTableCellElement} tdCell The <td> element in the right column of the table, containing the info about a single update.
  *   The element ends up in the DOM. Its content is replaced dynamically depending on the user's configuration.
- * @property {HTMLDivElement} fullContentDiv The div in tdCell.
+ * @property {HTMLDivElement} fullContentDiv The <div> in tdCell that contains the full content of the update, i.e. no cutouts.
  * @property {import("./GenerateCutoutsWithContext").Cutouts | null} cutouts The cutout contexts. If null, no cutouts could be found.
- * @property {HTMLDivElement} fullContentDiv_notInDOM The div that contains the full content of the update, i.e. no cutouts. It is never in the DOM.
  */
 
 
@@ -315,7 +316,7 @@ function ShowAllLines()
 
     for (const cell of gCurrentlyShownUpdates.allContentCells) {
         cell.tdCell.textContent = '';
-        cell.tdCell.appendChild(cell.fullContentDiv_notInDOM.cloneNode(true));
+        cell.tdCell.appendChild(cell.fullContentDiv);
     }
 }
 
@@ -413,7 +414,6 @@ function CreateHTMLForAllUpdates(allUpdateTables)
                 allContentCells.push({
                     tdCell: cell.tdContent,
                     fullContentDiv: cell.divContent,
-                    fullContentDiv_notInDOM: cell.divContent.cloneNode(true), 
                     cutouts: null,
                 });
             }
