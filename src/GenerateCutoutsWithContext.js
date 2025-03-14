@@ -78,7 +78,7 @@ export function DeepCloneCutouts(cutouts)
  * actually only show the desired "slice". If there are multiple target nodes in `originalHtmlElement`, we
  * create a full clone each time of `originalHtmlElement` but show a different "slice" each time.
  * 
- * @returns {Promise<Cutouts|undefined>} The cutouts or `undefined` if no cutouts could be found.
+ * @returns {Promise<Cutouts>} The cutouts. Contains a zero-length array if no cutouts could be found.
  * @param {Element} originalHtmlElement
  * @param {string[]} targetHtmlElementNames
  * @param {number} numContextLines
@@ -165,16 +165,6 @@ export async function GenerateCutoutsWithContext(
             prevCutout = {div: newCutoutDiv, top: curCutoutTop, bottom: curCutoutBottom};
             cutouts.push(prevCutout);
         }
-    }
-    
-    if (cutouts.length === 0) {
-        return undefined;
-    }
-
-    if (cutouts.length === 1 && cutouts[0].top <= 0 && cutouts[0].bottom >= origRect.height) {
-        // We got a single cutout covering the whole original element. So we don't really
-        // have a meaningful cutout.
-        return undefined;
     }
 
     for (const cutout of cutouts) {

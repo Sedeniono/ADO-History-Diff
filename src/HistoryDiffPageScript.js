@@ -188,6 +188,8 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Dark theme colors
     // - Handle no ins/del elements.
     // - Merge the two images, for better zooming behavior.
+    // - mergingTolerance: Height of borderDiv?
+    // - React to window size changes?
     const numContextLines = 2; // TODO: Config
     const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeight) : 0;
     let allCellPromises = [];
@@ -200,7 +202,7 @@ export async function LoadAndSetDiffInHTMLDocument()
         const singleUpdate = updateHtml.allContentCells[cellIdx];
         const promise = GenerateCutoutsWithContext(singleUpdate.divFullContent, ['ins', 'del'], numContextLines, lineHeight, mergingTolerance)
             .then(cutoutInfos => {
-                singleUpdate.cutouts = cutoutInfos ?? null;
+                singleUpdate.cutouts = cutoutInfos;
             });
         allCellPromises.push(promise);
     }
@@ -219,7 +221,7 @@ export async function LoadAndSetDiffInHTMLDocument()
  * @property {HTMLTableCellElement} tdCell The <td> element in the right column of the table, containing the info about a single update.
  *   The element ends up in the DOM. Its content is replaced dynamically depending on the user's configuration.
  * @property {HTMLDivElement} divFullContent The <div> in tdCell that contains the full content of the update, i.e. no cutouts.
- * @property {import("./GenerateCutoutsWithContext").Cutouts | null} cutouts The cutout contexts. If null, no cutouts could be found.
+ * @property {import("./GenerateCutoutsWithContext").Cutouts | null} cutouts The cutout contexts.
  * @property {import("./GenerateCutoutsWithContext").Cutouts | null} origCutouts The user can use buttons to remove and change elements
  *   in the `cutouts` property. This is the original cutouts that we created at the beginning. Note that this is set the first time
  *   we modify the `cutouts`. So it is either null if there are no cutouts, or if the `cutouts` had not been modified yet.
@@ -261,16 +263,32 @@ export function ShowOrHideUnchangedLinesDependingOnConfiguration()
  */
 function ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, lineHeightInPixel)
 {
+    const htmlElementInDOM = singleUpdateCell.tdCell;
+
     const cutoutInfos = singleUpdateCell.cutouts;
-    if (!cutoutInfos || !cutoutInfos.cutouts || cutoutInfos.cutouts.length === 0) {
+    if (!cutoutInfos || !cutoutInfos.cutouts) {
+        htmlElementInDOM.appendChild(singleUpdateCell.divFullContent);
         return;
     }
     
-    const htmlElementInDOM = singleUpdateCell.tdCell;
-    htmlElementInDOM.textContent = '';
     const cutouts = cutoutInfos.cutouts;
-
+    if (cutouts.length === 0) {
+        htmlElementInDOM.innerHTML = '<i>(Only whitespace or formatting changes not found by diff algorithm.)</i>';
+        return;
+    }
+    
+    const finalCutout = cutouts[cutouts.length - 1];
     const firstCutoutStartsAtTop = cutouts[0].top <= 0;
+    const finalCutoutEndsAtBottom = finalCutout.bottom >= cutoutInfos.originalHeight;
+
+    htmlElementInDOM.textContent = '';
+
+    if (cutouts.length === 1 && firstCutoutStartsAtTop && finalCutoutEndsAtBottom) {
+        // Only 1 cutout containing everything => Simply show the full content directly.
+        htmlElementInDOM.appendChild(singleUpdateCell.divFullContent);
+        return;
+    }
+
     if (!firstCutoutStartsAtTop) {
         const numHiddenLines = Math.ceil(cutouts[0].top / lineHeightInPixel);
         htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-top', numHiddenLines, singleUpdateCell, 0));
@@ -282,9 +300,7 @@ function ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, lineHeightInPixe
         htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-in-middle', numHiddenLines, singleUpdateCell, cutoutIdx + 1));
     }
 
-    const finalCutout = cutouts[cutouts.length - 1];
     htmlElementInDOM.appendChild(finalCutout.div);
-    const finalCutoutEndsAtBottom = finalCutout.bottom >= cutoutInfos.originalHeight;
     if (!finalCutoutEndsAtBottom) {
         const numHiddenLines = Math.ceil((cutoutInfos.originalHeight - finalCutout.bottom) / lineHeightInPixel);
         htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-bottom', numHiddenLines, singleUpdateCell, cutouts.length));
