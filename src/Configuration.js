@@ -11,6 +11,8 @@ import { LoadAndSetDiffInHTMLDocument, ShowOrHideUnchangedLinesDependingOnConfig
 import DividerSplitDownSvg from '../images/divider-split-horizontal-icon-down.svg';
 // @ts-ignore (webpack magic)
 import DividerSplitUpSvg from '../images/divider-split-horizontal-icon-up.svg';
+// @ts-ignore (webpack magic)
+import SettingsSvg from '../images/setting-icon.svg';
 
 
 const USER_CONFIG_KEY = 'HistoryDiffUserConfig';
@@ -169,8 +171,18 @@ function GetDisabledAllFieldFiltersCheckbox()
 
 function UpdateFilterButton()
 {
+    const img = document.createElement('img');
+    img.src = SettingsSvg;
+    img.style.height = '18px';
+    img.style.marginRight = '5px';
+        
     const numFilters = AnyFieldFiltersEnabled() ? gUserConfig.fieldFilters.length : 0;
-    GetOpenFilterConfigButton().innerHTML = `<b>Filters (${numFilters} active)</b>`;
+    const textNode = document.createTextNode(
+        numFilters === 1 ? `(${numFilters} filter)` : `(${numFilters} filters)`);
+
+    const filterButton = GetOpenFilterConfigButton();
+    filterButton.textContent = '';
+    filterButton.append(img, textNode);
 }
 
 

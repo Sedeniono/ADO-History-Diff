@@ -189,6 +189,7 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Merge the two images, for better zooming behavior.
     // - mergingTolerance: Height of borderDiv?
     // - React to window size changes?
+    // - Change work item and then going to history doesn't show cutouts.
     const numContextLines = 2; // TODO: Config
     const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeight) : 0;
     let allCellPromises = [];
