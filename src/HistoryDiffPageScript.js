@@ -186,7 +186,6 @@ export async function LoadAndSetDiffInHTMLDocument()
     // - Config for number of context lines
     // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
     // - Dark theme colors
-    // - Handle no ins/del elements.
     // - Merge the two images, for better zooming behavior.
     // - mergingTolerance: Height of borderDiv?
     // - React to window size changes?
@@ -281,7 +280,7 @@ function ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, lineHeightInPixe
         };
 
         const text = document.createElement('i');
-        text.textContent = '(Only whitespace or formatting changes not found by diff algorithm.)';
+        text.textContent = '(Only whitespace or formatting changes not detected by diff algorithm.)';
 
         tdCell.append(showContextButton, text);
         return;
