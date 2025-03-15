@@ -264,7 +264,8 @@ export function ShowOrHideUnchangedLinesDependingOnConfiguration()
 function ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, lineHeightInPixel)
 {
     const htmlElementInDOM = singleUpdateCell.tdCell;
-
+    htmlElementInDOM.textContent = '';
+    
     const cutoutInfos = singleUpdateCell.cutouts;
     if (!cutoutInfos || !cutoutInfos.cutouts) {
         htmlElementInDOM.appendChild(singleUpdateCell.divFullContent);
@@ -273,15 +274,22 @@ function ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, lineHeightInPixe
     
     const cutouts = cutoutInfos.cutouts;
     if (cutouts.length === 0) {
-        htmlElementInDOM.innerHTML = '<i>(Only whitespace or formatting changes not found by diff algorithm.)</i>';
+        const showContextButton = CreateShowContextButton();
+        showContextButton.onclick = () => {
+            htmlElementInDOM.textContent = '';
+            htmlElementInDOM.appendChild(singleUpdateCell.divFullContent);
+        };
+
+        const text = document.createElement('i');
+        text.textContent = '(Only whitespace or formatting changes not found by diff algorithm.)';
+
+        htmlElementInDOM.append(showContextButton, text);
         return;
     }
     
     const finalCutout = cutouts[cutouts.length - 1];
     const firstCutoutStartsAtTop = cutouts[0].top <= 0;
     const finalCutoutEndsAtBottom = finalCutout.bottom >= cutoutInfos.originalHeight;
-
-    htmlElementInDOM.textContent = '';
 
     if (cutouts.length === 1 && firstCutoutStartsAtTop && finalCutoutEndsAtBottom) {
         // Only 1 cutout containing everything => Simply show the full content directly.
@@ -347,16 +355,23 @@ function ShowAllLines()
 }
 
 
-/**
- * @param {SingleUpdateCell} singleUpdateCell
- */
-function CreateCutoutBorderDiv(positionClass, numHiddenLines, singleUpdateCell, indexOfCutoutAfterwards)
+function CreateShowContextButton()
 {
     const showContextButton = document.createElement('button');
     showContextButton.classList.add('img-button-in-cutout-border');
     showContextButton.style.backgroundPosition = 'top 0.5px left 50%, bottom 0.5px left 50%';
     showContextButton.style.backgroundImage = `url(${DividerSplitUpSvg}), url(${DividerSplitDownSvg})`;
     showContextButton.title = 'Show hidden lines.';
+    return showContextButton;
+}
+
+
+/**
+ * @param {SingleUpdateCell} singleUpdateCell
+ */
+function CreateCutoutBorderDiv(positionClass, numHiddenLines, singleUpdateCell, indexOfCutoutAfterwards)
+{
+    const showContextButton = CreateShowContextButton();
 
     const hiddenLinesText = document.createTextNode(
         numHiddenLines === 1 ? `1 hidden line` : `${numHiddenLines} hidden lines`);
