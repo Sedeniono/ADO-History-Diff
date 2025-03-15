@@ -263,12 +263,12 @@ export function ShowOrHideUnchangedLinesDependingOnConfiguration()
  */
 function ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, lineHeightInPixel)
 {
-    const htmlElementInDOM = singleUpdateCell.tdCell;
-    htmlElementInDOM.textContent = '';
+    const tdCell = singleUpdateCell.tdCell;
+    tdCell.textContent = '';
     
     const cutoutInfos = singleUpdateCell.cutouts;
     if (!cutoutInfos || !cutoutInfos.cutouts) {
-        htmlElementInDOM.appendChild(singleUpdateCell.divFullContent);
+        tdCell.appendChild(singleUpdateCell.divFullContent);
         return;
     }
     
@@ -276,14 +276,14 @@ function ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, lineHeightInPixe
     if (cutouts.length === 0) {
         const showContextButton = CreateShowContextButton();
         showContextButton.onclick = () => {
-            htmlElementInDOM.textContent = '';
-            htmlElementInDOM.appendChild(singleUpdateCell.divFullContent);
+            tdCell.textContent = '';
+            tdCell.appendChild(singleUpdateCell.divFullContent);
         };
 
         const text = document.createElement('i');
         text.textContent = '(Only whitespace or formatting changes not found by diff algorithm.)';
 
-        htmlElementInDOM.append(showContextButton, text);
+        tdCell.append(showContextButton, text);
         return;
     }
     
@@ -293,25 +293,25 @@ function ReplaceHtmlChildrenOfCellWithCutouts(singleUpdateCell, lineHeightInPixe
 
     if (cutouts.length === 1 && firstCutoutStartsAtTop && finalCutoutEndsAtBottom) {
         // Only 1 cutout containing everything => Simply show the full content directly.
-        htmlElementInDOM.appendChild(singleUpdateCell.divFullContent);
+        tdCell.appendChild(singleUpdateCell.divFullContent);
         return;
     }
 
     if (!firstCutoutStartsAtTop) {
         const numHiddenLines = Math.ceil(cutouts[0].top / lineHeightInPixel);
-        htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-top', numHiddenLines, singleUpdateCell, 0));
+        tdCell.appendChild(CreateCutoutBorderDiv('cutout-border-at-top', numHiddenLines, singleUpdateCell, 0));
     }
 
     for (let cutoutIdx = 0; cutoutIdx < cutouts.length - 1; ++cutoutIdx) {
-        htmlElementInDOM.appendChild(cutouts[cutoutIdx].div);
+        tdCell.appendChild(cutouts[cutoutIdx].div);
         const numHiddenLines = Math.ceil((cutouts[cutoutIdx + 1].top - cutouts[cutoutIdx].bottom) / lineHeightInPixel);
-        htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-in-middle', numHiddenLines, singleUpdateCell, cutoutIdx + 1));
+        tdCell.appendChild(CreateCutoutBorderDiv('cutout-border-in-middle', numHiddenLines, singleUpdateCell, cutoutIdx + 1));
     }
 
-    htmlElementInDOM.appendChild(finalCutout.div);
+    tdCell.appendChild(finalCutout.div);
     if (!finalCutoutEndsAtBottom) {
         const numHiddenLines = Math.ceil((cutoutInfos.originalHeight - finalCutout.bottom) / lineHeightInPixel);
-        htmlElementInDOM.appendChild(CreateCutoutBorderDiv('cutout-border-at-bottom', numHiddenLines, singleUpdateCell, cutouts.length));
+        tdCell.appendChild(CreateCutoutBorderDiv('cutout-border-at-bottom', numHiddenLines, singleUpdateCell, cutouts.length));
     }
 
     for (const cutout of cutouts) {
