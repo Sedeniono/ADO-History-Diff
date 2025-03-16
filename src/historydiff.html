@@ -163,6 +163,16 @@
             height: 20px; /* Same as cutout-border-base */
             padding: 0 15px;
             margin-right: 5px;
+            /*Darker color than normal buttons because every 2nd table row background
+            has the same color as normal buttons.*/
+            background-color: rgba(var(--palette-neutral-8, 234, 234, 234),1);
+            border-color: rgba(var(--palette-neutral-8, 234, 234, 234),1);
+        }
+        button.img-button-in-cutout-border:hover {
+            /*Darker color than normal buttons because every 2nd table row background
+            has the same color as normal buttons.*/
+            border-color: rgba(var(--palette-neutral-10, 218, 218, 218), 1);
+            background-color: rgba(var(--palette-neutral-10, 218, 218, 218), 1);
         }
         input {
             color: inherit;
