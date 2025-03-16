@@ -459,11 +459,17 @@ function CreateHTMLForAllUpdates(allUpdateTables)
     let allContentCells = [];
 
     const divAllUpdates = document.createElement('div');
-    for (const updateInfo of allUpdateTables) {
+    for (let updateIdx = 0; updateIdx < allUpdateTables.length; ++updateIdx) {
+        const updateInfo = allUpdateTables[updateIdx];
         const html = CreateHTMLForUpdateOnSingleDate(updateInfo);
         if (html && html.div) {
-            const hr = document.createElement('hr');
-            divAllUpdates.append(hr, html.div);
+            if (updateIdx > 0) {
+                const hr = document.createElement('hr');
+                hr.classList.add('diff-class');
+                divAllUpdates.append(hr);
+            }
+            
+            divAllUpdates.append(html.div);
 
             for (const cell of html.allContentCells) {
                 allContentCells.push({
