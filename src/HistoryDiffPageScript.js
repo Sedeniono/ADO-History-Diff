@@ -245,7 +245,7 @@ let gCurrentlyShownUpdates = null;
 let gLineHeightInPixels = null;
 
 
-export async function ShowOrHideUnchangedLinesDependingOnConfiguration()
+async function ShowOrHideUnchangedLinesDependingOnConfiguration()
 {
     const userConfig = await GetUserConfig();
     if (userConfig?.showUnchangedLines) {
@@ -679,7 +679,7 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
     gAdoSDK = adoSDK;
     gAdoAPI = adoAPI;
 
-    InitializeConfiguration(adoSDK);    
+    InitializeConfiguration(adoSDK, ShowOrHideUnchangedLinesDependingOnConfiguration);    
     await InitSharedGlobals(adoSDK, adoAPI);
 
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.

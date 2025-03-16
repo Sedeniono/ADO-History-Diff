@@ -5,7 +5,7 @@
 
 import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServices';
 import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils.js';
-import { LoadAndSetDiffInHTMLDocument, ShowOrHideUnchangedLinesDependingOnConfiguration } from './HistoryDiffPageScript.js';
+import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
 // @ts-ignore (webpack magic)
 import DividerSplitDownSvg from '../images/divider-split-horizontal-icon-down.svg';
@@ -82,12 +82,12 @@ var gUserConfig = DEFAULT_USER_CONFIG;
 var gInitConfigurationPromise;
 
 
-export function InitializeConfiguration(adoSDK)
+export function InitializeConfiguration(adoSDK, toggleContextCallback)
 {
     // To improve loading times, we want to simultaneously fetch the configuration and the item's history.
     // Therefore, we do not "await" the promise here, but instead only once we really need to access the
     // config data.
-    gInitConfigurationPromise = LoadAndInitializeConfiguration(adoSDK);
+    gInitConfigurationPromise = LoadAndInitializeConfiguration(adoSDK, toggleContextCallback);
 }
 
 
@@ -130,10 +130,10 @@ export async function GetUserConfig()
 }
 
 
-async function LoadAndInitializeConfiguration(adoSDK)
+async function LoadAndInitializeConfiguration(adoSDK, toggleContextCallback)
 {
     await LoadConfiguration(adoSDK);
-    InitializeConfigDialog();
+    InitializeConfigDialog(toggleContextCallback);
 }
 
 
@@ -243,10 +243,10 @@ function UpdateOpenConfigButtonWithNumFilters()
 }
 
 
-function InitializeConfigDialog()
+function InitializeConfigDialog(toggleContextCallback)
 {
     UpdateOpenConfigButtonWithNumFilters();
-    InitializeToggleContextButton();
+    InitializeToggleContextButton(toggleContextCallback);
 
     const configDialog = GetHtmlElement('config-dialog');
     const fieldFiltersTable = GetHtmlElement('config-dialog-field-filters-table');
@@ -359,7 +359,7 @@ function UpdateToggleContextButton()
 }
 
 
-function InitializeToggleContextButton()
+function InitializeToggleContextButton(toggleContextCallback)
 {
     GetToggleContextButton().addEventListener(
         'click', 
@@ -367,7 +367,7 @@ function InitializeToggleContextButton()
             gUserConfig.showUnchangedLines = !gUserConfig.showUnchangedLines;
             SaveNewUserConfig(gUserConfig);
             UpdateToggleContextButton();
-            ShowOrHideUnchangedLinesDependingOnConfiguration();
+            toggleContextCallback();
     });
 
     UpdateToggleContextButton();
