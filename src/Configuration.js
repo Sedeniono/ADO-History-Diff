@@ -15,7 +15,7 @@ import DividerSplitUpSvg from '../images/divider-split-horizontal-icon-up.svg';
 import SettingsSvg from '../images/setting-icon.svg';
 
 
-const USER_CONFIG_KEY = 'HistoryDiffUserConfig';
+const USER_CONFIG_KEY = 'HistoryDiffUserConfig_TmpTest';
 
 // IExtensionDataManager: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iextensiondatamanager
 var gExtensionDataManager;
@@ -23,31 +23,59 @@ var gExtensionDataManager;
 
 // The current version the extension uses. Every time we need to break backwards compatibility, we will
 // increment it. That way we know when we read configs from an older version of the extension.
-const USER_CONFIG_VERSION = 2;
+const USER_CONFIG_VERSION = 3;
 
 
-// UserConfig constructor
-function UserConfig(fieldFilters, fieldFiltersDisabled)
+/**
+ * UserConfig constructor
+ * @param {string[]} fieldFilters
+ * @param {boolean} fieldFiltersDisabled
+ * @param {boolean} showUnchangedLines
+ * @param {number} numContextLines
+ */
+function UserConfig(fieldFilters, fieldFiltersDisabled, showUnchangedLines, numContextLines)
 {
-    // We store some version in the config so that we can better deal with future changes to the extension
-    // that might make it necessary to brake backwards compatibility.
+    /** 
+     * We store some version in the config so that we can better deal with future changes to the extension
+     * that might make it necessary to brake backwards compatibility.
+     * @type {Number} 
+     */
     this.configVersion = USER_CONFIG_VERSION;
     
-    // string[] array. If an element matches a row name (i.e. field name), that corresponding field is 
-    // omitted from the history. The intention is so that the user can hide uninteresting fields such
-    // as working logging related fields.
+    /** 
+     * If an element matches a row name (i.e. field name), that corresponding field is omitted from the history.
+     * The intention is so that the user can hide uninteresting fields such as working logging related fields.
+     * @type {string[]} 
+     */
     this.fieldFilters = fieldFilters;
 
-    // Boolean. If true, the filters are disabled. The intention is that the user can temporarily disable
-    // the filters without having to remove then (and then re-add them later).
+    /** 
+     * If true, the filters are disabled. The intention is that the user can temporarily disable
+     * the filters without having to remove then (and then re-add them later).
+     * @type {boolean} 
+     */
     this.fieldFiltersDisabled = fieldFiltersDisabled;
+
+    /** 
+     * If true, all lines are shown. If false, only a context window around an <ins> and <del> element is shown,
+     * i.e. N lines below and above (where N = numContextLines).
+     * @type {boolean} 
+     */
+    this.showUnchangedLines = showUnchangedLines;
+
+    /** 
+     * An integer >= 0. Specifies the number of lines below and above each <ins> and <del> element to show.
+     * Only relevant if `showUnchangedLines` is true.
+     * @type {Number} 
+     */
+    this.numContextLines = numContextLines;
 }
 
 
 // In earlier version of the HistoryDiff extension, we hid the "Rev" (=revision) and stack rank fields from users always.
 // They clutter up the history quite a lot, and are probably uninteresting for many users. Hence we want to hide them by
 // default. (We show these fields at all due to GitHub issues #2 and #3.)
-const DEFAULT_USER_CONFIG = new UserConfig(['Rev', 'Stack Rank'], false);
+const DEFAULT_USER_CONFIG = new UserConfig(['Rev', 'Stack Rank'], false, false, 3);
 
 var gUserConfig = DEFAULT_USER_CONFIG;
 
@@ -95,6 +123,13 @@ export async function UpdateConfigDialogFieldSuggestions(fields)
 }
 
 
+export async function GetUserConfig()
+{
+    await gInitConfigurationPromise;
+    return gUserConfig;
+}
+
+
 async function LoadAndInitializeConfiguration(adoSDK)
 {
     await LoadConfiguration(adoSDK);
@@ -132,6 +167,13 @@ async function LoadConfiguration(adoSDK)
                 gUserConfig.fieldFilters.push('Stack Rank');
             }
         }
+        else if (gUserConfig.configVersion <= 2) {
+            gUserConfig.showUnchangedLines = DEFAULT_USER_CONFIG.showUnchangedLines;
+            gUserConfig.numContextLines = DEFAULT_USER_CONFIG.numContextLines;
+        }
+
+        gUserConfig.numContextLines = SanitizeNumberOfContextLinesInput(gUserConfig.numContextLines);
+        gUserConfig.configVersion = USER_CONFIG_VERSION;
     }
     catch (ex) {
         console.log(`HistoryDiff: Exception trying to load configuration: ${ex}`);
@@ -139,10 +181,11 @@ async function LoadConfiguration(adoSDK)
 }
 
 
-function SaveFieldFiltersToConfig(newFieldFilters, fieldFiltersDisabled)
+function SaveNewUserConfig(userConfig)
 {
     try {
-        gUserConfig = new UserConfig(newFieldFilters, fieldFiltersDisabled);
+        gUserConfig = userConfig;
+        gUserConfig.numContextLines = SanitizeNumberOfContextLinesInput(gUserConfig.numContextLines);
         gExtensionDataManager.setValue(USER_CONFIG_KEY, gUserConfig, {scopeType: 'User'});
     }
     catch (ex) {
@@ -157,19 +200,33 @@ function AnyFieldFiltersEnabled()
 }
 
 
-function GetOpenFilterConfigButton()
+function GetOpenConfigButton()
 {
     return GetHtmlElement('config-dialog-show');
 }
 
+function GetToggleContextButton()
+{
+    return GetHtmlElement('toggle-context');
+}
 
 function GetDisabledAllFieldFiltersCheckbox()
 {
     return GetHtmlElement('config-dialog-disable-all-field-filters');
 }
 
+function GetShowUnchangedLinesCheckbox()
+{
+    return GetHtmlElement('config-dialog-show-unchanged-lines');
+}
 
-function UpdateFilterButton()
+function GetNumContextLinesControl()
+{
+    return GetHtmlElement('config-dialog-num-context-lines');
+}
+
+
+function UpdateOpenConfigButtonWithNumFilters()
 {
     const img = document.createElement('img');
     img.src = SettingsSvg;
@@ -180,35 +237,41 @@ function UpdateFilterButton()
     const textNode = document.createTextNode(
         numFilters === 1 ? `(${numFilters} filter)` : `(${numFilters} filters)`);
 
-    const filterButton = GetOpenFilterConfigButton();
-    filterButton.textContent = '';
-    filterButton.append(img, textNode);
+    const openConfigButton = GetOpenConfigButton();
+    openConfigButton.textContent = '';
+    openConfigButton.append(img, textNode);
 }
 
 
 function InitializeConfigDialog()
 {
+    UpdateOpenConfigButtonWithNumFilters();
+    InitializeToggleContextButton();
+
     const configDialog = GetHtmlElement('config-dialog');
     const fieldFiltersTable = GetHtmlElement('config-dialog-field-filters-table');
     const disabledFieldFiltersCheckbox = GetDisabledAllFieldFiltersCheckbox();
-
-    GetOpenFilterConfigButton().addEventListener(
+    
+    GetOpenConfigButton().addEventListener(
         'click', 
         () => {
             SetCurrentFieldFiltersInDialog(fieldFiltersTable);
             // @ts-ignore
             disabledFieldFiltersCheckbox.checked = gUserConfig?.fieldFiltersDisabled;
             // @ts-ignore
+            GetShowUnchangedLinesCheckbox().checked = gUserConfig?.showUnchangedLines;
+            // @ts-ignore
+            GetNumContextLinesControl().value = gUserConfig?.numContextLines;
+            // @ts-ignore
             configDialog.showModal();
     });
-
-    UpdateFilterButton();
 
     GetHtmlElement('config-dialog-ok').addEventListener(
         'click', 
         () => {
-            SaveAllFieldFiltersFromDialog(configDialog);
-            UpdateFilterButton();
+            SaveNewUserConfigFromDialog(configDialog);
+            UpdateOpenConfigButtonWithNumFilters();
+            UpdateToggleContextButton();
             // @ts-ignore
             configDialog.close();
             LoadAndSetDiffInHTMLDocument();
@@ -223,7 +286,7 @@ function InitializeConfigDialog()
 }
 
 
-function SaveAllFieldFiltersFromDialog(configDialog)
+function SaveNewUserConfigFromDialog(configDialog)
 {
     const allInputs = configDialog.getElementsByTagName('input');
     let filters = [];
@@ -233,9 +296,15 @@ function SaveAllFieldFiltersFromDialog(configDialog)
         }
     }
 
-    // @ts-ignore
-    const disabledAll = GetDisabledAllFieldFiltersCheckbox().checked;
-    SaveFieldFiltersToConfig(filters, disabledAll);
+    SaveNewUserConfig(new UserConfig(
+        filters, 
+        // @ts-ignore
+        GetDisabledAllFieldFiltersCheckbox().checked,
+        // @ts-ignore
+        GetShowUnchangedLinesCheckbox().checked,
+        // @ts-ignore
+        SanitizeNumberOfContextLinesInput(GetNumContextLinesControl().value)
+    ));
 }
 
 
@@ -274,14 +343,12 @@ function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
 }
 
 
-export let gAllLinesCurrentlyShown = false;
-
-function SetToggleContextButtonText()
+function UpdateToggleContextButton()
 {
-    const toggleButton = GetHtmlElement('toggle-context');
+    const toggleButton = GetToggleContextButton();
     toggleButton.textContent = '';
     toggleButton.style.backgroundPosition = 'top 4px left 50%, bottom 4px left 50%';
-    if (gAllLinesCurrentlyShown) {
+    if (gUserConfig?.showUnchangedLines) {
         toggleButton.style.backgroundImage = `url(${DividerSplitDownSvg}), url(${DividerSplitUpSvg})`;
         toggleButton.title = 'Hide unchanged lines.';
     }
@@ -291,16 +358,33 @@ function SetToggleContextButtonText()
     }
 }
 
-export function InitializeToggleContextButton()
+
+function InitializeToggleContextButton()
 {
-    GetHtmlElement('toggle-context').addEventListener(
+    GetToggleContextButton().addEventListener(
         'click', 
         () => {
-            gAllLinesCurrentlyShown = !gAllLinesCurrentlyShown;
-            // TODO: Store config
-            SetToggleContextButtonText();
+            gUserConfig.showUnchangedLines = !gUserConfig.showUnchangedLines;
+            SaveNewUserConfig(gUserConfig);
+            UpdateToggleContextButton();
             ShowOrHideUnchangedLinesDependingOnConfiguration();
     });
 
-    SetToggleContextButtonText();
+    UpdateToggleContextButton();
+}
+
+
+function SanitizeNumberOfContextLinesInput(value)
+{
+    if (!value) {
+        return 0;
+    }
+    if (Number.isInteger(value)) {
+        return value;
+    }
+    const asInt = parseInt(value);
+    if (isNaN(asInt) || asInt < 0) {
+        return 0;
+    }
+    return asInt;
 }

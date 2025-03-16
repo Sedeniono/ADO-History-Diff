@@ -5,7 +5,7 @@
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
 import { InitSharedGlobals } from './Globals.js';
-import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions, InitializeToggleContextButton, gAllLinesCurrentlyShown } 
+import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions, GetUserConfig } 
     from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace, GetHtmlElement } from './Utils';
@@ -181,16 +181,15 @@ export async function LoadAndSetDiffInHTMLDocument()
     UpdateConfigDialogFieldSuggestions(allRowNames);
 
     // TODO:
-    // - numContextLines==0: Seems to have a slight offset downwards?
-    // - Buttons to allow expansion/collapsing
-    // - Config for number of context lines
     // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
     // - Dark theme colors
     // - Merge the two images, for better zooming behavior.
     // - mergingTolerance: Height of borderDiv?
     // - React to window size changes?
     // - Change work item and then going to history doesn't show cutouts.
-    const numContextLines = 2; // TODO: Config
+    // - Reset USER_CONFIG_KEY to correct one (no 'temp')
+    const userConfig = await GetUserConfig();
+    const numContextLines = userConfig?.numContextLines ?? 0;
     const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeight) : 0;
     let allCellPromises = [];
     for (let cellIdx = 0; cellIdx < updateHtml.allContentCells.length; ++cellIdx) {
@@ -211,7 +210,7 @@ export async function LoadAndSetDiffInHTMLDocument()
     gLineHeightInPixels = lineHeight;
     gCurrentlyShownUpdates = updateHtml;
 
-    ShowOrHideUnchangedLinesDependingOnConfiguration();
+    await ShowOrHideUnchangedLinesDependingOnConfiguration();
 }
 
 
@@ -246,9 +245,10 @@ let gCurrentlyShownUpdates = null;
 let gLineHeightInPixels = null;
 
 
-export function ShowOrHideUnchangedLinesDependingOnConfiguration()
+export async function ShowOrHideUnchangedLinesDependingOnConfiguration()
 {
-    if (gAllLinesCurrentlyShown) {
+    const userConfig = await GetUserConfig();
+    if (userConfig?.showUnchangedLines) {
         ShowAllLines();
     } 
     else {
@@ -382,7 +382,7 @@ function CreateCutoutBorderDiv(positionClass, numHiddenLines, singleUpdateCell, 
     borderDiv.append(showContextButton, hiddenLinesText);
 
     showContextButton.onclick = () => {
-        if (gAllLinesCurrentlyShown || !gCurrentlyShownUpdates || !singleUpdateCell.cutouts
+        if (!gCurrentlyShownUpdates || !singleUpdateCell.cutouts
             || indexOfCutoutAfterwards < 0 || indexOfCutoutAfterwards > singleUpdateCell.cutouts.cutouts.length) {
             return;
         }
@@ -681,8 +681,6 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
 
     InitializeConfiguration(adoSDK);    
     await InitSharedGlobals(adoSDK, adoAPI);
-
-    InitializeToggleContextButton();
 
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.
     // This causes ADO to show the 'spinning loading indicator' until we are ready.

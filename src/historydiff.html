@@ -179,6 +179,16 @@
         <button id="config-dialog-show" class="img-button-large" title="Open settings">Settings</button>
     </div>
     <dialog id="config-dialog" style="margin: 0; left: auto; right: 5px; top: 5px">
+        <label for="config-dialog-show-unchanged-lines" style="display: inline-block; white-space: nowrap;">
+            <span style="vertical-align: middle"><b>Show unchanged lines:</b></span>
+            <input id="config-dialog-show-unchanged-lines" type="checkbox" style="vertical-align: middle">
+        </label>
+        <br>
+        <label for="config-dialog-num-context-lines" style="display: inline-block; white-space: nowrap;">
+            <span style="vertical-align: middle"><b>Number of context lines:</b></span>
+            <input id="config-dialog-num-context-lines" type="number" min="0" placeholder="Number of context lines" style="vertical-align: middle">
+        </label>
+        <hr>
         <label for="config-dialog-disable-all-field-filters" style="display: inline-block; white-space: nowrap;">
             <span style="vertical-align: middle"><b>Disable all field filters:</b></span>
             <input id="config-dialog-disable-all-field-filters" type="checkbox" style="vertical-align: middle">
