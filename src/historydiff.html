@@ -170,6 +170,11 @@
             border: 1px solid;
             border-color: rgba(var(--palette-neutral-4,244, 244, 244),1);
         }
+        label {
+            display: inline-block; 
+            white-space: nowrap;
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 
@@ -179,21 +184,24 @@
         <button id="config-dialog-show" class="img-button-large" title="Open settings">Settings</button>
     </div>
     <dialog id="config-dialog" style="margin: 0; left: auto; right: 5px; top: 5px">
-        <label for="config-dialog-show-unchanged-lines" style="display: inline-block; white-space: nowrap;">
-            <span style="vertical-align: middle"><b>Show unchanged lines:</b></span>
-            <input id="config-dialog-show-unchanged-lines" type="checkbox" style="vertical-align: middle">
+        <label for="config-dialog-show-unchanged-lines">
+            <span><b>Show unchanged lines:</b></span>
+            <input id="config-dialog-show-unchanged-lines" type="checkbox" 
+                title="If checked, all lines are shown. If unchecked, only lines containing inserted or removed content and the configured number of context lines above/below are shown.">
         </label>
         <br>
-        <label for="config-dialog-num-context-lines" style="display: inline-block; white-space: nowrap;">
-            <span style="vertical-align: middle"><b>Number of context lines:</b></span>
-            <input id="config-dialog-num-context-lines" type="number" min="0" placeholder="Number of context lines" style="vertical-align: middle">
+        <label for="config-dialog-num-context-lines">
+            <span><b>Number of context lines:</b></span>
+            <input id="config-dialog-num-context-lines" type="number" min="0" placeholder="Number of context lines"
+                title="The number of context lines to show above and below of changed lines. Only relevant if 'Show unchanged lines' is checked." 
+                style="width: 50px">
         </label>
         <hr>
-        <label for="config-dialog-disable-all-field-filters" style="display: inline-block; white-space: nowrap;">
-            <span style="vertical-align: middle"><b>Disable all field filters:</b></span>
-            <input id="config-dialog-disable-all-field-filters" type="checkbox" style="vertical-align: middle">
+        <label for="config-dialog-disable-all-field-filters" style="margin-top: 8px">
+            <span><b>Disable all field filters:</b></span>
+            <input id="config-dialog-disable-all-field-filters" type="checkbox">
         </label>
-        <br><br>
+        <br>
         <b>Hide fields matching any of:</b><br>
         (case-insensitive; * means any characters)
         <table id="config-dialog-field-filters-table" style="border-spacing: 0; margin-top: 5px; margin-bottom: 5px"></table>
