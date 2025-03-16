@@ -140,7 +140,7 @@ async function GetProjectName()
 }
 
 
-export async function LoadAndSetDiffInHTMLDocument()
+async function LoadAndSetDiffInHTMLDocument()
 {
     SetHtmlToLoading();
 
@@ -679,7 +679,7 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
     gAdoSDK = adoSDK;
     gAdoAPI = adoAPI;
 
-    InitializeConfiguration(adoSDK, ShowOrHideUnchangedLinesDependingOnConfiguration);    
+    InitializeConfiguration(adoSDK, LoadAndSetDiffInHTMLDocument, ShowOrHideUnchangedLinesDependingOnConfiguration);    
     await InitSharedGlobals(adoSDK, adoAPI);
 
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.

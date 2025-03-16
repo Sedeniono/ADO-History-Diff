@@ -5,7 +5,6 @@
 
 import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServices';
 import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils.js';
-import { LoadAndSetDiffInHTMLDocument } from './HistoryDiffPageScript.js';
 
 // @ts-ignore (webpack magic)
 import DividerSplitDownSvg from '../images/divider-split-horizontal-icon-down.svg';
@@ -82,12 +81,12 @@ var gUserConfig = DEFAULT_USER_CONFIG;
 var gInitConfigurationPromise;
 
 
-export function InitializeConfiguration(adoSDK, toggleContextCallback)
+export function InitializeConfiguration(adoSDK, configChangedCallback, toggleContextCallback)
 {
     // To improve loading times, we want to simultaneously fetch the configuration and the item's history.
     // Therefore, we do not "await" the promise here, but instead only once we really need to access the
     // config data.
-    gInitConfigurationPromise = LoadAndInitializeConfiguration(adoSDK, toggleContextCallback);
+    gInitConfigurationPromise = LoadAndInitializeConfiguration(adoSDK, configChangedCallback, toggleContextCallback);
 }
 
 
@@ -130,10 +129,10 @@ export async function GetUserConfig()
 }
 
 
-async function LoadAndInitializeConfiguration(adoSDK, toggleContextCallback)
+async function LoadAndInitializeConfiguration(adoSDK, configChangedCallback, toggleContextCallback)
 {
     await LoadConfiguration(adoSDK);
-    InitializeConfigDialog(toggleContextCallback);
+    InitializeConfigDialog(configChangedCallback, toggleContextCallback);
 }
 
 
@@ -243,7 +242,7 @@ function UpdateOpenConfigButtonWithNumFilters()
 }
 
 
-function InitializeConfigDialog(toggleContextCallback)
+function InitializeConfigDialog(configChangedCallback, toggleContextCallback)
 {
     UpdateOpenConfigButtonWithNumFilters();
     InitializeToggleContextButton(toggleContextCallback);
@@ -274,7 +273,7 @@ function InitializeConfigDialog(toggleContextCallback)
             UpdateToggleContextButton();
             // @ts-ignore
             configDialog.close();
-            LoadAndSetDiffInHTMLDocument();
+            configChangedCallback();
     });
 
     GetHtmlElement('config-dialog-cancel').addEventListener(
