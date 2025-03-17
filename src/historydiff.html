@@ -47,7 +47,7 @@
             text-align: left;
             vertical-align: top;
             padding: 2px 15px 2px 0;
-            min-width: 6em;
+            min-width: 7em; /*So that the most common field type names fit on 1 line.*/
         }
         table tr td.diff-class:nth-child(2) { 
             /* Ensure that content cells span to the right, mainly so that cutout-borders look good. */
@@ -94,9 +94,6 @@
             color: var(--communication-foreground, rgb(0, 90, 158));
         }
 
-        .cutout-base {
-            /* background-color: #c0c0c0;  */
-        }
         .cutout-border-base {
             background-color: #fff2e0;
             height: 20px;
@@ -230,7 +227,7 @@
         <hr>
         <p style="font-size: 0.7em; min-width: 100%; width: 0; margin-top: 8px; margin-bottom: 2px">
             If you find the history diff useful, please give the extension a star on <a href="https://github.com/Sedeniono/ADO-History-Diff" target="_blank" rel="noopener noreferrer">GitHub</a>
-            and rate on the <a href="https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff" target="_blank" rel="noopener noreferrer">VS marketplace</a>!
+            and rate on the <a href="https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff" target="_blank" rel="noopener noreferrer">marketplace</a>!
         </p>
     </dialog>
     <div id="html-div-diff"></div>
