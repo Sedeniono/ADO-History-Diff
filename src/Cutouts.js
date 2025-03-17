@@ -25,12 +25,10 @@ let gLineHeightInPixels = null;
 export async function InitializeCutouts(updateHtml, lineHeightInPixel)
 {
     // TODO:
-    // - Test the events onUnloaded (moving to prev./next work item), refresh, etc: Does it flicker?
     // - Dark theme colors
     // - Merge the two images, for better zooming behavior.
     // - mergingTolerance: Height of borderDiv?
     // - React to window size changes?
-    // - Change work item and then going to history doesn't show cutouts.
     // - Reset USER_CONFIG_KEY to correct one (no 'temp')
     // - Test Firefox
     // - Test Cloud

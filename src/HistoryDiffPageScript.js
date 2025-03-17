@@ -18,6 +18,10 @@ var gAdoSDK;
 var gAdoAPI;
 var gUnloadedCalled = false;
 
+/** @type {?IntersectionObserver} */
+let gVisibilityObserver = null;
+
+
 
 /**
  * @typedef SingleUpdateCell
@@ -159,8 +163,44 @@ async function GetProjectName()
 }
 
 
+function LoadAndSetDiffInHTMLDocumentOnceVisible()
+{
+    // ADO is putting our page into an iframe that can be accessed via a tab. The first time the tab is clicked by
+    // the user, our code loads. When the user then goes to another tab, our page gets hidden. ADO implements the 
+    // tabs via the CSS `display` property: Only the active tab has `display: block`, while the others have 
+    // `display: none`. Specifically, the `display` property is set on some parent of the iframe. That means that 
+    // if we have already been loaded, and then the user is on another tab and then triggers one of the events (e.g.
+    // by saving the work item), we end up here with `display: none` and any getBoundingClientRect() calls (and similar
+    // geometry computation related things) are all invalid. They simply return 0. This in turn means that the whole
+    // context window cutout logic fails.
+    // Workaround: Use IntersectionObserver to setup a callback for when our tab becomes visible again.
+    if (document.body.getBoundingClientRect().height) {
+        // Our tab is visible.
+        LoadAndSetDiffInHTMLDocument();
+    }
+    else {
+        // Our tab is currently invisible.
+        gVisibilityObserver?.disconnect();
+        gVisibilityObserver = new IntersectionObserver((entries, observerParam) => {
+            if (entries && entries.length > 0) {
+                const mostRecentEntry = entries[entries.length - 1];
+                const shouldBeVisible = mostRecentEntry.intersectionRatio > 0;
+                if (shouldBeVisible && document.body.getBoundingClientRect().height) {
+                    // Our tab became visible again.
+                    LoadAndSetDiffInHTMLDocument();
+                }
+            }
+        });
+        gVisibilityObserver.observe(document.body);
+    }
+}
+
+
 async function LoadAndSetDiffInHTMLDocument()
 {
+    gVisibilityObserver?.disconnect();
+    gVisibilityObserver = null;
+
     SetHtmlToLoading();
 
     // workItemFormService = IWorkItemFormService 
@@ -398,29 +438,30 @@ function CreateWorkItemPageEvents()
             // On the initial load we do nothing, because we already retrieved everything in InitializeHistoryDiff(). The advantage of doing
             // it there is that we get the 'spinning circle' indicator for free by ADO.
             if (gUnloadedCalled) {
-                LoadAndSetDiffInHTMLDocument();
+                LoadAndSetDiffInHTMLDocumentOnceVisible();
             }
         },
 
         // Called when moving up or down a work item in a query. The only thing we need to do is to
         // let onLoaded know that it needs to actually get everything again.
         onUnloaded: function (args) {
+            gVisibilityObserver = null;
             gUnloadedCalled = true;
         },
 
         // Called after the user saved the work item.
         onSaved: function (args) {
-            LoadAndSetDiffInHTMLDocument();
+            LoadAndSetDiffInHTMLDocumentOnceVisible();
         },
 
         // Not sure when this can be called in practice. So simply get everything again.
         onReset: function (args) {
-            LoadAndSetDiffInHTMLDocument();
+            LoadAndSetDiffInHTMLDocumentOnceVisible();
         },
 
         // Called when the user clicks on the ADO refresh button.
         onRefreshed: function (args) {
-            LoadAndSetDiffInHTMLDocument();
+            LoadAndSetDiffInHTMLDocumentOnceVisible();
         }
     };
 }
@@ -459,12 +500,12 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
     gAdoSDK = adoSDK;
     gAdoAPI = adoAPI;
 
-    InitializeConfiguration(adoSDK, LoadAndSetDiffInHTMLDocument, ShowOrHideUnchangedLinesDependingOnConfiguration);    
+    InitializeConfiguration(adoSDK, LoadAndSetDiffInHTMLDocumentOnceVisible, ShowOrHideUnchangedLinesDependingOnConfiguration);    
     await InitSharedGlobals(adoSDK, adoAPI);
 
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.
     // This causes ADO to show the 'spinning loading indicator' until we are ready.
-    await LoadAndSetDiffInHTMLDocument();
+    await LoadAndSetDiffInHTMLDocumentOnceVisible();
 
     adoSDK.notifyLoadSucceeded();
 }
