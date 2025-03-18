@@ -27,7 +27,6 @@ export async function InitializeCutouts(updateHtml, lineHeightInPixel)
     // TODO:
     // - Dark theme colors
     // - Merge the two images, for better zooming behavior.
-    // - mergingTolerance: Height of borderDiv?
     // - React to window size changes?
     // - Reset USER_CONFIG_KEY to correct one (no 'temp')
     // - Test Firefox
@@ -35,7 +34,15 @@ export async function InitializeCutouts(updateHtml, lineHeightInPixel)
 
     const userConfig = await GetUserConfig();
     const numContextLines = userConfig?.numContextLines ?? 0;
-    const mergingTolerance = numContextLines > 0 ? (1.5 * lineHeightInPixel) : 0;
+    
+    // If the user wants zero context lines, we shouldn't show any just because there might be e.g. half a line
+    // between cutouts. The user asked for zero context lines, so he or she gets it.
+    // But otherwise we use the height of the cutout border (i.e. the height in the `cutout-border-base` class),
+    // since that height is fixed and it would be weird if there were less actual content height "hidden" behind
+    // the cutout border. (It would mean that by expanding the cutout border, the required space to display the
+    // content shrinks instead of grows.)
+    const mergingToleranceInPixel = numContextLines > 0 ? 20 : 0;
+
     let allCellPromises = [];
     for (let cellIdx = 0; cellIdx < updateHtml.allContentCells.length; ++cellIdx) {
         // singleUpdate.tdCell is a <td> element in the right column of the table, containing the info about a single update
@@ -44,8 +51,9 @@ export async function InitializeCutouts(updateHtml, lineHeightInPixel)
         // Also, it is important to pass in the <div> rather than the <td> so that extents are measured only for the cell 
         // content rather than the whole cell.
         const singleUpdate = updateHtml.allContentCells[cellIdx];
-        const promise = GenerateCutoutsWithContext(singleUpdate.divFullContent, ['ins', 'del'], numContextLines, lineHeightInPixel, mergingTolerance)
-            .then(cutoutInfos => {
+        const promise = GenerateCutoutsWithContext(
+                singleUpdate.divFullContent, ['ins', 'del'], numContextLines, lineHeightInPixel, mergingToleranceInPixel
+            ).then(cutoutInfos => {
                 singleUpdate.cutouts = cutoutInfos;
             });
         allCellPromises.push(promise);
