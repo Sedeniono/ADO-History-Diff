@@ -95,22 +95,22 @@
         }
 
         .cutout-border-base {
-            background-color: #fff2e0;
+            background-color: var(--status-warning-background, rgba(251, 242, 236, 1));
             height: 20px; /* Note: Also hardcoded in InitializeCutouts(), variable mergingToleranceInPixel! */
-            color: #c8c8c8;
+            color: rgb(var(--palette-neutral-20, 200, 200, 200));
             position: relative;
             display: flex;
             align-items: center;;
         }
         .cutout-border-at-top {
-            border-bottom: 1px solid black;
+            border-bottom: 1px solid rgb(var(--palette-neutral-100, 0, 0, 0));
         }
         .cutout-border-at-bottom {
-            border-top: 1px solid black;
+            border-top: 1px solid rgb(var(--palette-neutral-100, 0, 0, 0));
         }
         .cutout-border-in-middle {
-            border-top: 1px solid black;
-            border-bottom: 1px solid black;
+            border-top: 1px solid rgb(var(--palette-neutral-100, 0, 0, 0));
+            border-bottom: 1px solid rgb(var(--palette-neutral-100, 0, 0, 0));
         }
 
         /* All the dialog and button/input stuff: Try to mimic the ADO style. We could also use the official dialog 
