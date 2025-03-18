@@ -7,9 +7,7 @@ import { GetUserConfig } from './Configuration';
 import { GenerateCutoutsWithContext, DeepCloneCutouts } from './GenerateCutoutsWithContext';
 
 // @ts-ignore (webpack magic)
-import DividerSplitDownSvg from '../images/divider-split-horizontal-icon-down.svg';
-// @ts-ignore (webpack magic)
-import DividerSplitUpSvg from '../images/divider-split-horizontal-icon-up.svg';
+import ExpandSvg from '../images/divider-split-horizontal-icon.svg';
 
 
 /** @type {?import('./HistoryDiffPageScript').AllUpdates} */
@@ -26,7 +24,6 @@ export async function InitializeCutouts(updateHtml, lineHeightInPixel)
 {
     // TODO:
     // - Dark theme colors
-    // - Merge the two images, for better zooming behavior.
     // - React to window size changes?
     // - Reset USER_CONFIG_KEY to correct one (no 'temp')
     // - Test Firefox
@@ -179,8 +176,7 @@ function CreateShowContextButton()
 {
     const showContextButton = document.createElement('button');
     showContextButton.classList.add('img-button-in-cutout-border');
-    showContextButton.style.backgroundPosition = 'top 0.5px left 50%, bottom 0.5px left 50%';
-    showContextButton.style.backgroundImage = `url(${DividerSplitUpSvg}), url(${DividerSplitDownSvg})`;
+    showContextButton.style.backgroundImage = `url(${ExpandSvg})`;
     showContextButton.title = 'Show hidden lines.';
     return showContextButton;
 }

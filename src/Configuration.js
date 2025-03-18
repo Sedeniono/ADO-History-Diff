@@ -7,9 +7,9 @@ import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServic
 import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils.js';
 
 // @ts-ignore (webpack magic)
-import DividerSplitDownSvg from '../images/divider-split-horizontal-icon-down.svg';
+import CollapseSvg from '../images/divider-collapse-horizontal-icon.svg';
 // @ts-ignore (webpack magic)
-import DividerSplitUpSvg from '../images/divider-split-horizontal-icon-up.svg';
+import ExpandSvg from '../images/divider-split-horizontal-icon.svg';
 // @ts-ignore (webpack magic)
 import SettingsSvg from '../images/setting-icon.svg';
 
@@ -346,13 +346,12 @@ function UpdateToggleContextButton()
 {
     const toggleButton = GetToggleContextButton();
     toggleButton.textContent = '';
-    toggleButton.style.backgroundPosition = 'top 4px left 50%, bottom 4px left 50%';
     if (gUserConfig?.showUnchangedLines) {
-        toggleButton.style.backgroundImage = `url(${DividerSplitDownSvg}), url(${DividerSplitUpSvg})`;
+        toggleButton.style.backgroundImage = `url(${CollapseSvg})`;
         toggleButton.title = 'Hide unchanged lines.';
     }
     else {
-        toggleButton.style.backgroundImage = `url(${DividerSplitUpSvg}), url(${DividerSplitDownSvg})`;
+        toggleButton.style.backgroundImage = `url(${ExpandSvg})`;
         toggleButton.title = 'Show all unchanged lines.';
     }
 }
