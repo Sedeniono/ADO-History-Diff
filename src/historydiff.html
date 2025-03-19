@@ -135,6 +135,8 @@
             height: 32px;
             padding: 0 20px;
             vertical-align: middle;
+            display: inline-flex;
+            align-items: center;
         }
         button:hover {
             border-color: rgba(var(--palette-neutral-8, 234, 234, 234), 1);
@@ -146,37 +148,43 @@
             background-color: var(--communication-background, rgba(0, 120, 212, 1));
             color: rgba(var(--palette-neutral-0, 255, 255, 255), 1);
         }
+
+        .img-in-button {
+            height: 18px;
+        }
+
         button.delete-filter {
             height: 22px;
             line-height: 22px;
             padding: 0 10px;
             margin: 1px 0 0 5px;
         }
-        button.img-button-large {
-            background-size: 18px;
-            background-repeat: no-repeat;
-            background-position: center;
-            display: inline-flex;
-            align-items: center;
-        }
-        button.img-button-in-cutout-border {
-            background-size: 14px;
-            background-repeat: no-repeat;
-            background-position: center;
+
+        button.button-in-cutout-border {
             height: 20px; /* Same as cutout-border-base */
-            padding: 0 15px;
+            padding: 0 8px;
             margin-right: 5px;
             /*Darker color than normal buttons because every 2nd table row background
             has the same color as normal buttons.*/
             background-color: rgba(var(--palette-neutral-8, 234, 234, 234),1);
             border-color: rgba(var(--palette-neutral-8, 234, 234, 234),1);
         }
-        button.img-button-in-cutout-border:hover {
+        button.button-in-cutout-border:hover {
             /*Darker color than normal buttons because every 2nd table row background
             has the same color as normal buttons.*/
             border-color: rgba(var(--palette-neutral-10, 218, 218, 218), 1);
             background-color: rgba(var(--palette-neutral-10, 218, 218, 218), 1);
         }
+        button.button-in-cutout-border:active {
+            border-color: var(--communication-background, rgba(0, 120, 212, 1));
+            background-color: var(--communication-background, rgba(0, 120, 212, 1));
+            color: rgba(var(--palette-neutral-0, 255, 255, 255), 1);
+        }
+
+        .img-in-button-in-cutout-border {
+            height: 14px;
+        }
+
         input {
             color: inherit;
             background-color: rgba(var(--palette-neutral-4,244, 244, 244),1);
@@ -193,8 +201,9 @@
 
 <body>
     <div style="position: absolute; top: 15px; right: 10px">
-        <button id="toggle-context" class="img-button-large">Toggle context</button>
-        <button id="config-dialog-show" class="img-button-large" title="Open settings">Settings</button>
+        <!-- The button labels are set for real in the javascript code. -->
+        <button id="toggle-context">Toggle context</button>
+        <button id="config-dialog-show" title="Open configuration">Config</button>
     </div>
     <dialog id="config-dialog" style="margin: 0; left: auto; right: 5px; top: 5px">
         <label for="config-dialog-show-unchanged-lines">

@@ -228,8 +228,9 @@ function GetNumContextLinesControl()
 function UpdateOpenConfigButtonWithNumFilters()
 {
     const img = document.createElement('img');
+    img.classList.add('img-in-button');
+    img.classList.add('img-invert-for-dark-mode');
     img.src = SettingsSvg;
-    img.style.height = '18px';
     img.style.marginRight = '5px';
         
     const numFilters = AnyFieldFiltersEnabled() ? gUserConfig.fieldFilters.length : 0;
@@ -346,14 +347,20 @@ function UpdateToggleContextButton()
 {
     const toggleButton = GetToggleContextButton();
     toggleButton.textContent = '';
+
+    const img = document.createElement('img');
+    img.classList.add('img-in-button');
+    img.classList.add('img-invert-for-dark-mode');
     if (gUserConfig?.showUnchangedLines) {
-        toggleButton.style.backgroundImage = `url(${CollapseSvg})`;
+        img.src = CollapseSvg;
         toggleButton.title = 'Hide unchanged lines.';
     }
     else {
-        toggleButton.style.backgroundImage = `url(${ExpandSvg})`;
+        img.src = ExpandSvg;
         toggleButton.title = 'Show all unchanged lines.';
     }
+
+    toggleButton.appendChild(img);
 }
 
 

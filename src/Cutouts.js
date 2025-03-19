@@ -175,9 +175,15 @@ function ShowAllLines()
 function CreateShowContextButton()
 {
     const showContextButton = document.createElement('button');
-    showContextButton.classList.add('img-button-in-cutout-border');
-    showContextButton.style.backgroundImage = `url(${ExpandSvg})`;
+    showContextButton.classList.add('button-in-cutout-border');
     showContextButton.title = 'Show hidden lines.';
+
+    const img = document.createElement('img');
+    img.classList.add('img-in-button-in-cutout-border');
+    img.classList.add('img-invert-for-dark-mode');
+    img.src = ExpandSvg;
+    showContextButton.append(img);
+
     return showContextButton;
 }
 
