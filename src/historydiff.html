@@ -95,6 +95,7 @@
         }
 
         .cutout-border-base {
+            /* Note: background-color will be overwritten in dark mode. */
             background-color: var(--status-warning-background, rgba(251, 242, 236, 1));
             height: 20px; /* Note: Also hardcoded in InitializeCutouts(), variable mergingToleranceInPixel! */
             color: rgb(var(--palette-neutral-20, 200, 200, 200));

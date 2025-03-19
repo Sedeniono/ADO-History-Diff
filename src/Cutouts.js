@@ -23,7 +23,6 @@ let gLineHeightInPixels = null;
 export async function InitializeCutouts(updateHtml, lineHeightInPixel)
 {
     // TODO:
-    // - Dark theme colors
     // - React to window size changes?
     // - Reset USER_CONFIG_KEY to correct one (no 'temp')
     // - Test Firefox

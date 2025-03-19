@@ -416,7 +416,10 @@ function DetectAndApplyDarkMode()
                 ins.diff-class { 
                     background-color: rgb(35, 94, 0); 
                 }
-                img.img-invert-for-dark-mode {
+                .cutout-border-base {
+                    background-color: rgb(20, 20, 20);
+                }
+                .img-invert-for-dark-mode {
                     filter: invert(100%);
                 }
             </style>`);
