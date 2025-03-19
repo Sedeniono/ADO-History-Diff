@@ -322,13 +322,13 @@ function SetCurrentFieldFiltersInDialog(fieldFiltersTable)
 function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
 {
     const newInput = document.createElement('input');
-    newInput.setAttribute('type', 'text');
+    newInput.type = 'text';
     newInput.setAttribute('list', 'config-dialog-suggested-fields');
-    newInput.setAttribute('size', '30');
+    newInput.size = 30;
     newInput.value = filterString;
 
     const newDeleteButton = document.createElement('button');
-    newDeleteButton.setAttribute('class', 'delete-filter');
+    newDeleteButton.classList.add('delete-filter-button');
     newDeleteButton.textContent = '❌';
     
     const newRow = document.createElement('tr');
