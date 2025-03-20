@@ -13,6 +13,9 @@ import { CommentFormat } from 'azure-devops-extension-api/Comments';
 export const COMMENT_UPDATE_ID = 'COMMENT';
 
 
+/**
+ * @returns {import('./HistoryDiffPageScript').UpdateTables[]}
+ */
 export function GetTableInfosForEachComment(comments)
 {
     let allCommentTables = [];

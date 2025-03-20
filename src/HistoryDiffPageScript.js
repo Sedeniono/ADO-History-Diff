@@ -46,6 +46,24 @@ let gVisibilityObserver = null;
  */
 
 
+/**
+ * @typedef UpdateTableRow
+ * @type {object}
+ * @property {string} rowName The name of the field that was changed.
+ * @property {string} content The content of the field that was changed.
+ */
+
+
+/**
+ * @typedef UpdateTables
+ * @type {object}
+ * @property {string} authorIdentity The identity of the user that made the change.
+ * @property {Date} changedDate The date of the change.
+ * @property {UpdateTableRow[]} tableRows
+ * @property {string} idNumber
+ */
+
+
 function GetHtmlDisplayField()
 {
     return GetHtmlElement('html-div-diff');
@@ -58,6 +76,9 @@ function SetHtmlToLoading()
 }
 
 
+/**
+ * @returns {Promise<UpdateTables[]>}
+ */
 async function GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap, currentProjectName)
 {
     const tablesForRevisionUpdates = await GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap, currentProjectName);
@@ -203,6 +224,23 @@ async function LoadAndSetDiffInHTMLDocument()
 
     SetHtmlToLoading();
 
+    const allUpdateTables = await LoadAllUpdatesFromServer();
+
+    // To make it easier for the user to enter new filters, add the rows as datalist
+    // to the dialog.
+    const allRowNames = GetAllRowNamesInTable(allUpdateTables);
+    UpdateConfigDialogFieldSuggestions(allRowNames); // No await: We don't need to wait for the dialog to update.
+
+    await BuildAndSetHtmlFromUpdateTables(allUpdateTables);
+}
+
+
+/**
+ * Retrieves the work item updates from the server and applies the filters. Does not yet build any html.
+ * @returns {Promise<UpdateTables[]>}
+ */
+async function LoadAllUpdatesFromServer()
+{
     // workItemFormService = IWorkItemFormService 
     // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemformservice
     // Not stored as global variable during initialization because the instance is tied to a certain work item,
@@ -224,6 +262,16 @@ async function LoadAndSetDiffInHTMLDocument()
 
     const allUpdateTables = await GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap, projectName);
     await FilterTablesInPlace(allUpdateTables);
+    return allUpdateTables;
+}
+
+
+/**
+ * Given the work item updates from the server, builds the html and sets it.
+ * @param {UpdateTables[]} allUpdateTables 
+ */
+async function BuildAndSetHtmlFromUpdateTables(allUpdateTables)
+{
     const updateHtml = CreateHTMLForAllUpdates(allUpdateTables);
 
     const displayField = GetHtmlDisplayField();
@@ -231,15 +279,11 @@ async function LoadAndSetDiffInHTMLDocument()
     const lineHeight = GetLineHeightInPixel(displayField);
     displayField.appendChild(updateHtml.divAllUpdates);
 
-    // To make it easier for the user to enter new filters, add the rows as datalist
-    // to the dialog.
-    const allRowNames = GetAllRowNamesInTable(allUpdateTables);
-    UpdateConfigDialogFieldSuggestions(allRowNames);
-
+    // Must come after the html is already in the DOM, because we need to get the rendered 
+    // sizes of the elements to create the cutouts.
     await InitializeCutouts(updateHtml, lineHeight);
     await ShowOrHideUnchangedLinesDependingOnConfiguration();
 }
-
 
 
 function GetAllRowNamesInTable(allUpdateTables)
@@ -254,6 +298,9 @@ function GetAllRowNamesInTable(allUpdateTables)
 }
 
 
+/**
+ * @param {UpdateTables[]} allUpdateTables 
+ */
 async function FilterTablesInPlace(allUpdateTables)
 {
     for (const updateInfo of allUpdateTables) {
@@ -265,6 +312,7 @@ async function FilterTablesInPlace(allUpdateTables)
 
 
 /**
+ * @param {UpdateTables[]} allUpdateTables 
  * @returns {AllUpdates}
  */
 function CreateHTMLForAllUpdates(allUpdateTables)

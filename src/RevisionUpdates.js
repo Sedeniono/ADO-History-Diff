@@ -19,8 +19,12 @@ import { FieldType as FieldTypeEnum } from 'azure-devops-extension-api/WorkItemT
 
 
 
+/**
+ * @returns {Promise<import('./HistoryDiffPageScript').UpdateTables[]>}
+ */
 export async function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap, currentProjectName) 
 {
+    /** @type {import('./HistoryDiffPageScript').UpdateTables[]} */
     let allUpdateTables = [];
 
     for (let revIdx = revisionUpdates.length - 1; revIdx >= 0; --revIdx) {
