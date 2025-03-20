@@ -21,6 +21,9 @@ var gUnloadedCalled = false;
 /** @type {?IntersectionObserver} */
 let gVisibilityObserver = null;
 
+/** @type {?UpdateTables[]} */
+let gAllUpdateTables = null;
+
 
 
 /**
@@ -217,21 +220,48 @@ function LoadAndSetDiffInHTMLDocumentOnceVisible()
 }
 
 
+// Returns a function that, when called, builds and sets the whole html document again. Does not load the data from
+// the server again. If called too frequently, only the last call does actually do anything. Intended to be called
+// from the `resize` event: We need to rebuild the html because the cutouts might change.
+function GetHtmlAfterResizeUpdater()
+{
+    const updateFunc = () => {
+        if (gAllUpdateTables) {
+            const origScrollPos = document.documentElement.scrollTop;
+            BuildAndSetHtmlFromUpdateTables(gAllUpdateTables);
+            document.documentElement.scrollTo({left: 0, top: origScrollPos, behavior: 'instant'});
+        }
+    };
+
+    // Don't react to every resize, because that would be very CPU intensive.
+    // https://stackoverflow.com/a/45905199/3740047
+    let timer = null;
+    return (event) => {
+        if (timer) {
+            clearTimeout(timer);
+        }
+        // 250ms seems to work well in practice.
+        timer = setTimeout(updateFunc, 250, event);
+    };
+}
+
+
 async function LoadAndSetDiffInHTMLDocument()
 {
+    gAllUpdateTables = null;
     gVisibilityObserver?.disconnect();
     gVisibilityObserver = null;
 
     SetHtmlToLoading();
 
-    const allUpdateTables = await LoadAllUpdatesFromServer();
+    gAllUpdateTables = await LoadAllUpdatesFromServer();
 
     // To make it easier for the user to enter new filters, add the rows as datalist
     // to the dialog.
-    const allRowNames = GetAllRowNamesInTable(allUpdateTables);
+    const allRowNames = GetAllRowNamesInTable(gAllUpdateTables);
     UpdateConfigDialogFieldSuggestions(allRowNames); // No await: We don't need to wait for the dialog to update.
 
-    await BuildAndSetHtmlFromUpdateTables(allUpdateTables);
+    await BuildAndSetHtmlFromUpdateTables(gAllUpdateTables);
 }
 
 
@@ -562,6 +592,9 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
     await LoadAndSetDiffInHTMLDocumentOnceVisible();
 
     adoSDK.notifyLoadSucceeded();
+
+    // Cutouts can change depending on the window size, so update the html if the user resizes the window.
+    window.addEventListener('resize', GetHtmlAfterResizeUpdater());
 }
 
 

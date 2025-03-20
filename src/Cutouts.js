@@ -23,9 +23,10 @@ let gLineHeightInPixels = null;
 export async function InitializeCutouts(updateHtml, lineHeightInPixel)
 {
     // TODO:
-    // - React to window size changes?
+    // - Better separation between updates; maybe tiles?
+    // - Max width, configurable?
     // - Reset USER_CONFIG_KEY to correct one (no 'temp')
-    // - Test Firefox
+    // - Look for TODOs
     // - Test Cloud
 
     const userConfig = await GetUserConfig();
