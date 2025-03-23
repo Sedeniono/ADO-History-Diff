@@ -9,6 +9,7 @@
 - [Details about the new "History" tab](#details-about-the-new-history-tab)
   - [Basic functionality](#basic-functionality)
   - [Filters](#filters)
+  - [Showing only unchanged lines](#showing-only-unchanged-lines)
 - [On-premise installation (Azure DevOps Server)](#on-premise-installation-azure-devops-server)
   - [Uploading the extension to Azure DevOps Server](#uploading-the-extension-to-azure-devops-server)
   - [Enabling/configuring the history tab for work item types](#enablingconfiguring-the-history-tab-for-work-item-types)
@@ -24,7 +25,7 @@
 
 The standard history tab of work items in Azure DevOps (ADO) shows only the entire old and new values of each field, without highlighting the actual changes within it.
 This makes spotting the difference very hard for fields that usually contain a lot of text; most prominently, the standard "Description" and "Repro Steps" fields as well as the comments.
-This extension adds a **new tab** to work items that shows the full history of every field, while computing an **appropriate diff** for each one. Optionally, the user can filter out uninteresting fields (e.g. related to work logging).
+This extension adds a **new tab** to work items that shows the full history of every field, while computing an **appropriate diff** for each one. Optionally, the user can filter out uninteresting fields (e.g. related to work logging) and show only the changed lines in long texts.
 
 
 **If you like the extension, please give it a [star on GitHub](https://github.com/Sedeniono/ADO-History-Diff) and rate on the [Visual Studio marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff)!**
@@ -86,7 +87,7 @@ The extension is aware of the dark mode theme and uses appropriate colors.
 Note: Changing the theme in Azure DevOps (light to dark or vice versa) might not immediately change all colors. The page should be reloaded after changing the theme.
 
 ## Filters
-Using the "Filters" button in the top right corner of the history tab, users can filter out fields that are uninteresting to them, such as work logging related fields or fields used by scripts for housekeeping purposes.
+Using the "settings" button in the top right corner of the history tab, users can filter out fields that are uninteresting to them, such as work logging related fields or fields used by scripts for housekeeping purposes.
 The field names as shown in the history are matched completely by default and case-insensitively.
 Note that a `*` wildcard can be used to match any number of arbitrary characters.
 For example, `description`, `Desc*`, `*SCRIPT*` and `*tion` will all match e.g. the field `Description`.
@@ -95,6 +96,18 @@ To make entering fields easier, the fields of the currently active work item can
 The configuration dialog also allows to disable all configured filters without deleting them; the intention is to allow the user to temporarily view the full history without loosing the configured filters.
 
 All settings are stored per user on the server using [ADO's data storage facilities](https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage).
+
+
+## Showing only unchanged lines
+The left button in the top right corner allows to toggle between showing all lines, or only the changed ones.
+If you choose to show only changed lines, `N >= 0` additional lines above and below each change is displayed.
+The value of `N` can be configured in the settings (right button in the top right corner).
+A value of `N=0` means that just the lines containing the changes are shown.
+Note that for values `N>0`, the extension merges consecutive "context sections".
+They are merged also if the distance between the sections would be less than approximately 1 line. 
+
+All settings are stored per user on the server using [ADO's data storage facilities](https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage).
+
 
 
 # On-premise installation (Azure DevOps Server)
@@ -276,6 +289,5 @@ Apart from the import/export steps, the steps of modifying the actual XML file s
 * Once [markdown is available in Azure DevOps work items](https://developercommunity.visualstudio.com/t/add-markdown-support-in-discussions/365826), support it.
 * Support GitHub and remote work item links.
 * Support test cases (`Microsoft.VSTS.TCM.Steps`, `Microsoft.VSTS.TCM.LocalDataSource`, `Microsoft.VSTS.TCM.Parameters`).
-* Show only the context of a change in longer descriptions (optionally).
 * Localization of hardcoded strings.
 
