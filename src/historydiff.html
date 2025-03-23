@@ -117,7 +117,7 @@
 
         /* All the dialog and button/input stuff: Try to mimic the ADO style. We could also use the official dialog 
         (https://developer.microsoft.com/en-us/azure-devops/components/dialog), but then we get a large amount of
-        additional package dependencies that don't seem to be worth it at the moment. */
+        additional package dependencies that doesn't seem to be worth it at the moment. */
         dialog {
             color: var(--text-primary-color,rgba(0, 0, 0, .9));
             background-color: var(--background-color,rgba(255, 255, 255, 1));
@@ -130,9 +130,9 @@
         button {
             user-select: none;
             color: var(--text-primary-color, rgba(0, 0, 0, .9));
-            background-color: rgba(var(--palette-neutral-4,244, 244, 244),1);
+            background-color: rgba(var(--palette-neutral-6, 239, 239, 239),1);
             border: 1px solid;
-            border-color: rgba(var(--palette-neutral-4,244, 244, 244),1);
+            border-color: rgba(var(--palette-neutral-6, 239, 239, 239),1);
             outline: 0;    
             height: 32px;
             padding: 0 20px;
@@ -141,8 +141,8 @@
             align-items: center;
         }
         button:hover {
-            border-color: rgba(var(--palette-neutral-8, 234, 234, 234), 1);
-            background-color: rgba(var(--palette-neutral-8, 234, 234, 234), 1);
+            border-color: rgba(var(--palette-neutral-10, 218, 218, 218), 1);
+            background-color: rgba(var(--palette-neutral-10, 218, 218, 218), 1);
             color: var(--text-primary-color, rgba(0, 0, 0, .9));
         }
         button:active {
