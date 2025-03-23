@@ -23,7 +23,6 @@ let gLineHeightInPixels = null;
 export async function InitializeCutouts(updateHtml, lineHeightInPixel)
 {
     // TODO:
-    // - Better separation between updates; maybe tiles?
     // - Max width, configurable?
     // - Reset USER_CONFIG_KEY to correct one (no 'temp')
     // - Look for TODOs

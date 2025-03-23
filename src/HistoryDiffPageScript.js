@@ -351,16 +351,11 @@ function CreateHTMLForAllUpdates(allUpdateTables)
     let allContentCells = [];
 
     const divAllUpdates = document.createElement('div');
-    for (let updateIdx = 0; updateIdx < allUpdateTables.length; ++updateIdx) {
-        const updateInfo = allUpdateTables[updateIdx];
+    divAllUpdates.classList.add('tile-container');
+
+    for (const updateInfo of allUpdateTables) {
         const html = CreateHTMLForUpdateOnSingleDate(updateInfo);
         if (html && html.div) {
-            if (updateIdx > 0) {
-                const hr = document.createElement('hr');
-                hr.classList.add('diff-class');
-                divAllUpdates.append(hr);
-            }
-
             divAllUpdates.append(html.div);
 
             for (const cell of html.allContentCells) {
@@ -394,7 +389,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
 
     const header = document.createElement('div');
     header.classList.add('update-header');
-    header.innerHTML = `${avatarHtml} <b>${changedByName}</b> changed on <i>${changedDateStr}</i>${idStr}:`;
+    header.innerHTML = `${avatarHtml} <div><b>${changedByName}</b> changed on <i>${changedDateStr}</i>${idStr}:</div>`;
 
     const table = document.createElement('table');
     table.classList.add('diff-class');
@@ -429,7 +424,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
     table.appendChild(tbody);
 
     const div = document.createElement('div');
-    div.classList.add('full-single-update');
+    div.classList.add('single-update-tile');
     div.append(header, table);
     return {div, allContentCells};
 }
@@ -499,6 +494,9 @@ function DetectAndApplyDarkMode()
                 }
                 .img-invert-for-dark-mode {
                     filter: invert(100%);
+                }
+                tbody tr.diff-class:nth-child(even) {
+                    background-color: rgb(41, 40, 39);
                 }
             </style>`);
     }

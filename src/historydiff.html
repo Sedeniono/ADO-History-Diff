@@ -46,8 +46,8 @@
         td.diff-class {
             text-align: left;
             vertical-align: top;
-            padding: 2px 15px 2px 0;
-            min-width: 7em; /*So that the most common field type names fit on 1 line.*/
+            padding: 2px 2px;
+            min-width: 8.5em; /*So that the most common field type names fit on 1 line.*/
         }
         table tr td.diff-class:nth-child(2) { 
             /* Ensure that content cells span to the right, mainly so that cutout-borders look good. */
@@ -55,47 +55,51 @@
         }
         th.diff-class {            
             text-align: left;
-            padding: 0 15px 0 0;
+            padding: 0 0 4px 2px;
         }
         thead.diff-class { 
-            border-bottom: 1px solid; 
+            border-bottom: 1px solid rgb(var(--palette-neutral-20, 200, 200, 200));
         }
         tbody tr.diff-class:nth-child(even) {
-            /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
-            background-color: rgb(var(--palette-neutral-4, 244, 244, 244));
+            /* Note: background-color will be overwritten in dark mode in DetectAndApplyDarkMode(). */
+            background-color: rgb(var(--palette-neutral-6, 239, 239, 239));
+        }
+
+        div.tile-container {
+            display: grid;
+            justify-content: space-between;
+            gap: 1.5rem;
         }
         div.update-header {
-            /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
-            background-color: rgb(var(--palette-neutral-4, 244, 244, 244));
-            border-color: rgb(var(--palette-neutral-8, 234, 234, 234));
-            font-size: 1.05em; 
-            border-width: 2px; 
-            border-style: solid; 
-            display: inline-block; 
-            padding : 1px 0.3em 1px; 
-            margin-bottom: 3px;
+            font-size: 1.25em; 
+            margin-bottom: 0.5em;
+            display: inline-flex; 
+            align-items: center;
+            vertical-align: middle;
         }
-        div.full-single-update {
-            padding-bottom: 5px;
-            padding-top: 5px;
+        div.single-update-tile {
+            background-color: rgb(var(--palette-neutral-2, 248, 248, 248));
+            border: 1px solid rgb(var(--palette-neutral-8, 234, 234, 234));
+            border-radius: 4px;
+            padding: 0.6rem;
+            box-shadow: 0 4px 6px 0 var(--callout-shadow-color, rgba(0, 0, 0, .132)), 0 0 3px 0 var(--callout-shadow-secondary-color, rgba(0, 0, 0, .108));
         }
-        hr.diff-class {
-            margin-top: 10px;
-            margin-bottom: 10px;
-        }
+
         .inline-avatar {
             display: inline-block;
-            height: 1em;
+            height: 1.5em;
             width: auto;
-            transform: translate(0, 0.1em);
+            border-radius: 50%;
+            margin-right: 0.5em;
         }
+
         a {
             /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
             color: var(--communication-foreground, rgb(0, 90, 158));
         }
 
         .cutout-border-base {
-            /* Note: background-color will be overwritten in dark mode. */
+            /* Note: background-color will be overwritten in dark mode in DetectAndApplyDarkMode(). */
             background-color: var(--status-warning-background, rgba(251, 242, 236, 1));
             height: 20px; /* Note: Also hardcoded in InitializeCutouts(), variable mergingToleranceInPixel! */
             color: rgb(var(--palette-neutral-20, 200, 200, 200));
@@ -104,14 +108,14 @@
             align-items: center;;
         }
         .cutout-border-at-top {
-            border-bottom: 1px solid rgb(var(--palette-neutral-100, 0, 0, 0));
+            border-bottom: 1px solid rgb(var(--palette-neutral-20, 200, 200, 200));
         }
         .cutout-border-at-bottom {
-            border-top: 1px solid rgb(var(--palette-neutral-100, 0, 0, 0));
+            border-top: 1px solid rgb(var(--palette-neutral-20, 200, 200, 200));
         }
         .cutout-border-in-middle {
-            border-top: 1px solid rgb(var(--palette-neutral-100, 0, 0, 0));
-            border-bottom: 1px solid rgb(var(--palette-neutral-100, 0, 0, 0));
+            border-top: 1px solid rgb(var(--palette-neutral-20, 200, 200, 200));
+            border-bottom: 1px solid rgb(var(--palette-neutral-20, 200, 200, 200));
         }
 
         /* All the dialog and button/input stuff: Try to mimic the ADO style. We could also use the official dialog 
@@ -201,7 +205,7 @@
 </head>
 
 <body>
-    <div style="position: absolute; top: 15px; right: 10px">
+    <div style="position: absolute; top: 15px; right: 18px">
         <!-- The button labels are set for real in the javascript code. -->
         <button id="toggle-context">Toggle context</button>
         <button id="config-dialog-show" title="Open configuration">Config</button>
