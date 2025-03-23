@@ -105,9 +105,13 @@ export async function GenerateCutoutsWithContext(
         await Promise.all(imgPromises);
     }
 
-    const origRect = originalHtmlElement.getBoundingClientRect();
-    const origTop = origRect.top;
-    const origBottom = origRect.bottom;
+    const origExtent = GetTopAndBottomIncludingMarginsOf(originalHtmlElement);
+    const origTop = origExtent.top;
+    const origBottom = origExtent.bottom;
+    if (origTop === null || origBottom === null) {
+        return {cutouts: [], originalHeight: 0};
+    }
+    const origHeight = origBottom - origTop;
     
     // +1 to ensure we really don't cut anything off. It also causes merging of
     // contexts on successive lines.
@@ -120,9 +124,9 @@ export async function GenerateCutoutsWithContext(
     const origTargetNodes = originalHtmlElement.querySelectorAll(targetHtmlElementNames.join(","));
     for (const origTargetNode of origTargetNodes) {
         // Find the top and bottom of the target element.
-        const origTargetNodeExtent = GetTopAndBottomPositionOf(origTargetNode);
-        const origTargetTop = origTargetNodeExtent.top;
-        let origTargetBottom = origTargetNodeExtent.bottom;
+        const origTargetNodeExtent = GetTopAndBottomExcludingMarginsOf(origTargetNode);
+        const origTargetTop = origTargetNodeExtent.top || 0;
+        let origTargetBottom = origTargetNodeExtent.bottom || 0;
 
         // If the target node is empty, ensure that we nevertheless show a meaningful context.
         origTargetBottom = Math.max(origTargetBottom, origTargetTop + lineHeightInPixel);
@@ -136,8 +140,8 @@ export async function GenerateCutoutsWithContext(
         if (curCutoutTop <= mergingToleranceInPixel) {
             curCutoutTop = 0;
         }
-        if (origRect.height - curCutoutBottom <= mergingToleranceInPixel) {
-            curCutoutBottom = origRect.height;
+        if (origHeight - curCutoutBottom <= mergingToleranceInPixel) {
+            curCutoutBottom = origHeight;
         }
 
         const contextHeight = curCutoutBottom - curCutoutTop;        
@@ -182,11 +186,14 @@ export async function GenerateCutoutsWithContext(
         }
     }, 0);
 
-    return {cutouts, originalHeight: origRect.height};
+    return {cutouts, originalHeight: origHeight};
 }
 
 
-function GetTopAndBottomPositionOf(htmlNode)
+/**
+ * @param {Element} htmlNode
+ */
+function GetTopAndBottomExcludingMarginsOf(htmlNode)
 {
     // If the htmlNode itself or children of it have `display: inline`, `htmlNode.getBoundingClientRect()` 
     // will not take the inline node's height into account. For example, take `<ins><img...></ins>` 
@@ -200,7 +207,68 @@ function GetTopAndBottomPositionOf(htmlNode)
     const selectRect = range.getBoundingClientRect();
 
     const htmlRect = htmlNode.getBoundingClientRect();
-    const top = Math.min(selectRect.top, htmlRect?.top);
-    const bottom = Math.max(selectRect.bottom, htmlRect?.bottom);
+
+    // Note: E.g. for `<br>` elements, selectRect has all its values set to 0, but htmlRect has meaningful values.
+    let top = CombineValues(
+        selectRect?.height > 0 ? selectRect.top : undefined, 
+        htmlRect?.height > 0 ? htmlRect.top : undefined, 
+        Math.min);
+
+    let bottom = CombineValues(
+        selectRect?.height > 0 ? selectRect.bottom : undefined, 
+        htmlRect?.height > 0 ? htmlRect.bottom : undefined, 
+        Math.max);
+
+    if (top === undefined || bottom === undefined || top === null || bottom === null) {
+        return {top: null, bottom: null};
+    }
+
+    return {top, bottom};
+}
+
+
+function CombineValues(val1, val2, func)
+{
+    if (val1 === undefined || val1 === null) {
+        return val2;
+    }
+    if (val2 === undefined || val2 === null) {
+        return val1;
+    }
+    return func(val1, val2);
+}
+
+
+/**
+ * @param {Element} htmlNode
+ */
+function GetTopAndBottomIncludingMarginsOf(htmlNode)
+{
+    const extent = GetTopAndBottomExcludingMarginsOf(htmlNode);
+    let top = extent.top;
+    let bottom = extent.bottom;
+    if (top === null || bottom === null) {
+        return {top: null, bottom: null};
+    }
+    const style = getComputedStyle(htmlNode);
+    const marginTop = parseFloat(style.marginTop) || 0;
+    const marginBottom = parseFloat(style.marginBottom) || 0;
+    top = Math.min(top, extent.top - marginTop);
+    bottom = Math.max(bottom, extent.bottom + marginBottom);
+
+    // `htmlNode` is typically the `<div>` that contains the whole content. The first element can be e.g. a `<h2>`.
+    // The `<div>` itself does not have a margin set, but the `<h2>` does. At the call site of this function, we
+    // need the whole extent of the `<div>`, including the parts of children that might lie outside of the `<div>`.
+    htmlNode.querySelectorAll('*').forEach(child => {
+        const childExtent = GetTopAndBottomExcludingMarginsOf(child);
+        if (childExtent.top !== null && childExtent.bottom !== null) {
+            const childStyle = getComputedStyle(child);
+            const childMarginTop = parseFloat(childStyle.marginTop) || 0;
+            const childMarginBottom = parseFloat(childStyle.marginBottom) || 0;
+            top = Math.min(top, childExtent.top - childMarginTop);
+            bottom = Math.max(bottom, childExtent.bottom + childMarginBottom);
+        }
+    });
+
     return {top, bottom};
 }
