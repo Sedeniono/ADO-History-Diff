@@ -393,11 +393,6 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
 
     const table = document.createElement('table');
     table.classList.add('diff-class');
-    
-    const thead = document.createElement('thead');
-    thead.classList.add('diff-class');
-    thead.innerHTML = '<tr><th class="diff-class">Field</th><th class="diff-class">Content</th></tr>';
-    table.appendChild(thead);
 
     let allContentCells = [];
     const tbody = document.createElement('tbody');
