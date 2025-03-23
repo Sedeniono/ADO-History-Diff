@@ -22,12 +22,6 @@ let gLineHeightInPixels = null;
  */
 export async function InitializeCutouts(updateHtml, lineHeightInPixel)
 {
-    // TODO:
-    // - Max width, configurable?
-    // - Reset USER_CONFIG_KEY to correct one (no 'temp')
-    // - Look for TODOs
-    // - Test Cloud
-
     const userConfig = await GetUserConfig();
     const numContextLines = userConfig?.numContextLines ?? 0;
     

@@ -14,7 +14,7 @@ import ExpandSvg from '../images/divider-split-horizontal-icon.svg';
 import SettingsSvg from '../images/setting-icon.svg';
 
 
-const USER_CONFIG_KEY = 'HistoryDiffUserConfig_TmpTest';
+const USER_CONFIG_KEY = 'HistoryDiffUserConfig';
 
 // IExtensionDataManager: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iextensiondatamanager
 var gExtensionDataManager;
