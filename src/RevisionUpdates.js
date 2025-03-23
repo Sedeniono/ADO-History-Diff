@@ -372,7 +372,7 @@ function FormatIdentityForFieldDiff(identity)
     }
 
     const avatarHtml = GetIdentityAvatarHtml(identity);
-    return `${avatarHtml} ${changedByName}`
+    return `<div class="identity-in-field">${avatarHtml} <div>${changedByName}</div></div>`;
 }
 
 
