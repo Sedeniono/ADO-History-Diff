@@ -405,12 +405,13 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
         tdName.innerHTML = row.rowName;
         
         const divContent = document.createElement('div');
-        divContent.classList.add('diff-class');
+        divContent.classList.add('in-td-context-hack'); // See GetTopAndBottomIncludingMarginsOf()
         divContent.innerHTML = row.content;
 
         const tdContent = document.createElement('td');
         tdContent.classList.add('diff-class');
         tdContent.appendChild(divContent);
+
         allContentCells.push({tdContent, divContent});
 
         tr.append(tdName, tdContent);

@@ -79,7 +79,7 @@ export function DeepCloneCutouts(cutouts)
  * create a full clone each time of `originalHtmlElement` but show a different "slice" each time.
  * 
  * @returns {Promise<Cutouts>} The cutouts. Contains a zero-length array if no cutouts could be found.
- * @param {Element} originalHtmlElement
+ * @param {HTMLElement} originalHtmlElement
  * @param {string[]} targetHtmlElementNames
  * @param {number} numContextLines
  * @param {number} lineHeightInPixel
@@ -240,35 +240,41 @@ function CombineValues(val1, val2, func)
 
 
 /**
- * @param {Element} htmlNode
+ * @param {HTMLElement} htmlNode
  */
 function GetTopAndBottomIncludingMarginsOf(htmlNode)
 {
-    const extent = GetTopAndBottomExcludingMarginsOf(htmlNode);
-    let top = extent.top;
-    let bottom = extent.bottom;
-    if (top === null || bottom === null) {
-        return {top: null, bottom: null};
+    // The `htmlNode` is typically a <div> that contains the text of e.g. the description field. That field often
+    // starts with a heading such as <h1>:
+    //   <div>
+    //     <h1>Title</h1>
+    //     ...
+    //   </div>
+    // The <h1> has some margin, which extents above the <div> element. I.e. the height of the <div> element
+    // (as retrieved by getBoundingClientRect()) is smaller than the height + the margins of the <h1> element.
+    // This feature is called 'margin collapsing' (https://www.w3.org/TR/CSS2/box.html#collapsing-margins)
+    // (https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_box_model/Mastering_margin_collapsing).
+    //
+    // Unfortunately, we require the 'true' top and bottom of the <div> element. To get it, we have basically
+    // two options:
+    // 1) Use `getComputedStyle(htmlNode)` and get the marginTop and marginBottom properties. Plus do this for *all*
+    //    children of `htmlNode`, too. Then take the min/max of all the marginTop/marginBottom values. This is rather
+    //    slow. This was the original approach in v1.6.0 of the extension. See e.g. 2c1762b4272a24bd2ae7435c1bdac356f9acf026
+    //    The advantage is that it should work always.
+    // 2) We exploit some knowledge about the parent of the `htmlNode` and prevent margin collapsing. One way to do this
+    //    is to set the CSS property `overflow` to "auto". In general, this does change the layout. However, the `htmlNode` 
+    //    has a <td> table element as parent. In this case, setting `overflow="auto"` does not seem to change the rendered layout.
+    //    But it does prevent margin collapsing. As a consequence, `htmlNode.getBoundingClientRect()` then returns the
+    //    'true' top and bottom, including the margins of the children of `htmlNode`.
+    //    The disadvantage is that it obviously exploits knowledge about our html structure. But it is much simpler and faster.
+    //
+    // We use option (2) here. We could temporarily set `overflow="auto"` here. But it doesn't seem to hurt to simply
+    // set it always. It certainly prevents another layout pass in the browser. See CSS class 'in-td-context-hack'.
+    //
+    // Playground: https://jsfiddle.net/q54hg8d3/7/
+
+    if (getComputedStyle(htmlNode).overflow !== 'auto') {
+        console.error('The overflow property of the htmlNode must be "auto" to get the correct height including margins.');
     }
-    const style = getComputedStyle(htmlNode);
-    const marginTop = parseFloat(style.marginTop) || 0;
-    const marginBottom = parseFloat(style.marginBottom) || 0;
-    top = Math.min(top, extent.top - marginTop);
-    bottom = Math.max(bottom, extent.bottom + marginBottom);
-
-    // `htmlNode` is typically the `<div>` that contains the whole content. The first element can be e.g. a `<h2>`.
-    // The `<div>` itself does not have a margin set, but the `<h2>` does. At the call site of this function, we
-    // need the whole extent of the `<div>`, including the parts of children that might lie outside of the `<div>`.
-    htmlNode.querySelectorAll('*').forEach(child => {
-        const childExtent = GetTopAndBottomExcludingMarginsOf(child);
-        if (childExtent.top !== null && childExtent.bottom !== null) {
-            const childStyle = getComputedStyle(child);
-            const childMarginTop = parseFloat(childStyle.marginTop) || 0;
-            const childMarginBottom = parseFloat(childStyle.marginBottom) || 0;
-            top = Math.min(top, childExtent.top - childMarginTop);
-            bottom = Math.max(bottom, childExtent.bottom + childMarginBottom);
-        }
-    });
-
-    return {top, bottom};
+    return GetTopAndBottomExcludingMarginsOf(htmlNode);
 }
