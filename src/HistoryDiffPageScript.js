@@ -305,6 +305,12 @@ async function BuildAndSetHtmlFromUpdateTables(allUpdateTables)
     const updateHtml = CreateHTMLForAllUpdates(allUpdateTables);
 
     const displayField = GetHtmlDisplayField();
+
+    // Set visibility to 'hidden': We need to insert the `updateHtml` into the DOM before we can calculate the cutouts.
+    // That means (without visibility set to 'hidden') that for a short duration the version without the cutouts is
+    // visible, and then it jumps to the version with the cutouts. We want to prevent that flicker.
+    displayField.style.visibility = 'hidden';
+    
     displayField.textContent = '';
     const lineHeight = GetLineHeightInPixel(displayField);
     displayField.appendChild(updateHtml.divAllUpdates);
@@ -313,6 +319,8 @@ async function BuildAndSetHtmlFromUpdateTables(allUpdateTables)
     // sizes of the elements to create the cutouts.
     await InitializeCutouts(updateHtml, lineHeight);
     await ShowOrHideUnchangedLinesDependingOnConfiguration();
+
+    displayField.style.visibility = 'visible';
 }
 
 
