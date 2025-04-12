@@ -233,7 +233,7 @@ async function GetUserFriendlyStringsForRelationChange(currentProjectName, relat
     }
     
     // TODO: Remote work links types (links between organizations).
-    return ['(Unsupported link type)', '(Showing the change is not supported.)'];
+    return ['(Unsupported link type)', '<div class="unsupported-diff">(Showing the change is not supported.)</div>'];
 }
 
 
@@ -263,20 +263,20 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         // https://devblogs.microsoft.com/devops/how-to-use-test-step-using-rest-client-helper/
         // https://oshamrai.wordpress.com/2019/05/11/azure-devops-services-rest-api-14-create-and-add-test-cases-2/
         // ADO probably parses it in TestBase.getTestStepsInternal() in TestManagement\Scripts\TFS.TestManagement.js.
-        return '(Showing the diff of test case steps is not supported.)';
+        return '<div class="unsupported-diff">(Showing the diff of test case steps is not supported.)</div>';
     }
     else if (fieldReferenceName === 'Microsoft.VSTS.TCM.Parameters') {
         // This field is used in 'shared parameter set' work items, which are work items that can be referenced by test case items.
         // https://learn.microsoft.com/en-us/azure/devops/test/repeat-test-with-different-data?view=azure-devops#share-parameters-between-test-cases
         // The field type is reported as 'FieldTypeEnum.Html', although in reality it is some general XML. For example:
         //    "<parameterSet><paramNames><param>someVar</param><param>var</param></paramNames><paramData lastId=\"1\"><dataRow id=\"1\"><kvp key=\"someVar\" value=\"test value\"/><kvp key=\"var\" value=\"another value\"/></dataRow></paramData></parameterSet>"
-        return '(Showing the diff of a shared parameter set is not supported.)';
+        return '<div class="unsupported-diff">(Showing the diff of a shared parameter set is not supported.)</div>';
     }
     else if (fieldReferenceName === 'Microsoft.VSTS.TCM.LocalDataSource') {
         // Similar to the two cases above, this field is used in test case work items. It contains parameter values. And as the 
         // other fields, it is reported to contain HTML, which is again a lie. For local parameters it is again some XML string. 
         // Insidiously, for shared parameters it seems to contain data in JSON.
-        return '(Showing the diff of parameter values is not supported.)';
+        return '<div class="unsupported-diff">(Showing the diff of parameter values is not supported.)</div>';
     }
 
     // Azure DevOps (at least 2019) reports identities (e.g. the 'System.CreatedBy' field) as 'FieldTypeEnum.String', but the 'isIdentity' flag is set.

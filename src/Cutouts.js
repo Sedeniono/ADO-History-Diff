@@ -38,9 +38,19 @@ export async function InitializeCutouts(updateHtml, lineHeightInPixel)
         // singleUpdate.tdCell is a <td> element in the right column of the table, containing the info about a single update
         // and including <ins> and <del> elements. singleUpdate.divFullContent is the <div> in the <td> that contains the data.
         // They have already been inserted into the DOM, which is important for GenerateCutoutsWithContext() to work properly. 
-        // Also, it is important to pass in the <div> rather than the <td> so that extents are measured only for the cell 
-        // content rather than the whole cell.
         const singleUpdate = updateHtml.allContentCells[cellIdx];
+
+        // The following is kind of a hack: We do not support showing the diff or even the raw content for certain types of
+        // fields. These are put in a <div> with the class 'unsupported-diff' and we show a special message to the user.
+        // This text obviously does not contain any <ins>/<del> elements, so cutouts make no sense.
+        const firstChild = singleUpdate.divFullContent?.firstChild;
+        if (firstChild && firstChild instanceof HTMLElement && firstChild.classList.contains('unsupported-diff')) {
+            // Skip unsupported diff cells. They are not cutouts, so we don't need to show them.
+            continue;
+        }
+
+        // It is important to pass in the <div> rather than the <td> so that extents are measured only for the cell 
+        // content rather than the whole cell.
         const promise = GenerateCutoutsWithContext(
                 singleUpdate.divFullContent, ['ins', 'del'], numContextLines, lineHeightInPixel, mergingToleranceInPixel
             ).then(cutoutInfos => {
