@@ -22,7 +22,7 @@ var gExtensionDataManager;
 
 // The current version the extension uses. Every time we need to break backwards compatibility, we will
 // increment it. That way we know when we read configs from an older version of the extension.
-const USER_CONFIG_VERSION = 3;
+const USER_CONFIG_VERSION = 4;
 
 
 /**
@@ -31,8 +31,16 @@ const USER_CONFIG_VERSION = 3;
  * @param {boolean} fieldFiltersDisabled
  * @param {boolean} showUnchangedLines
  * @param {number} numContextLines
+ * @param {boolean} limitMaxContentWidth
+ * @param {number} maxContentWidth
  */
-function UserConfig(fieldFilters, fieldFiltersDisabled, showUnchangedLines, numContextLines)
+function UserConfig(
+    fieldFilters, 
+    fieldFiltersDisabled, 
+    showUnchangedLines, 
+    numContextLines, 
+    limitMaxContentWidth, 
+    maxContentWidth)
 {
     /** 
      * We store some version in the config so that we can better deal with future changes to the extension
@@ -68,13 +76,27 @@ function UserConfig(fieldFilters, fieldFiltersDisabled, showUnchangedLines, numC
      * @type {Number} 
      */
     this.numContextLines = numContextLines;
+
+    /** 
+     * If true, content cells are limited to a max. width of `maxContentWidth`.
+     * Having very wide content cells can make the history hard to read for ultra-wide screens.
+     * @type {boolean} 
+     */
+    this.limitMaxContentWidth = limitMaxContentWidth;
+    
+    /** 
+     * An integer >= 1. Specifies the max. width of the content cells.
+     * Only relevant if `limitMaxContentWidth` is true.
+     * @type {Number} 
+     */
+    this.maxContentWidth = maxContentWidth;
 }
 
 
 // In earlier version of the HistoryDiff extension, we hid the "Rev" (=revision) and stack rank fields from users always.
 // They clutter up the history quite a lot, and are probably uninteresting for many users. Hence we want to hide them by
 // default. (We show these fields at all due to GitHub issues #2 and #3.)
-const DEFAULT_USER_CONFIG = new UserConfig(['Rev', 'Stack Rank'], false, false, 3);
+const DEFAULT_USER_CONFIG = new UserConfig(['Rev', 'Stack Rank'], false, false, 3, true, 1200);
 
 var gUserConfig = DEFAULT_USER_CONFIG;
 
@@ -170,8 +192,13 @@ async function LoadConfiguration(adoSDK)
             gUserConfig.showUnchangedLines = DEFAULT_USER_CONFIG.showUnchangedLines;
             gUserConfig.numContextLines = DEFAULT_USER_CONFIG.numContextLines;
         }
+        else if (gUserConfig.configVersion <= 3) {
+            gUserConfig.limitMaxContentWidth = DEFAULT_USER_CONFIG.limitMaxContentWidth;
+            gUserConfig.maxContentWidth = DEFAULT_USER_CONFIG.maxContentWidth;
+        }
 
         gUserConfig.numContextLines = SanitizeNumberOfContextLinesInput(gUserConfig.numContextLines);
+        gUserConfig.maxContentWidth = SanitizeMaxContentWidthInput(gUserConfig.maxContentWidth);
         gUserConfig.configVersion = USER_CONFIG_VERSION;
     }
     catch (ex) {
@@ -185,6 +212,7 @@ function SaveNewUserConfig(userConfig)
     try {
         gUserConfig = userConfig;
         gUserConfig.numContextLines = SanitizeNumberOfContextLinesInput(gUserConfig.numContextLines);
+        gUserConfig.maxContentWidth = SanitizeMaxContentWidthInput(gUserConfig.maxContentWidth);
         gExtensionDataManager.setValue(USER_CONFIG_KEY, gUserConfig, {scopeType: 'User'});
     }
     catch (ex) {
@@ -222,6 +250,16 @@ function GetShowUnchangedLinesCheckbox()
 function GetNumContextLinesControl()
 {
     return GetHtmlElement('config-dialog-num-context-lines');
+}
+
+function GetLimitMaxContentWidthCheckbox()
+{
+    return GetHtmlElement('config-dialog-limit-content-width');
+}
+
+function GetMaxContentWidthControl()
+{
+    return GetHtmlElement('config-dialog-max-content-width');
 }
 
 
@@ -264,6 +302,10 @@ function InitializeConfigDialog(configChangedCallback, toggleContextCallback)
             // @ts-ignore
             GetNumContextLinesControl().value = gUserConfig?.numContextLines;
             // @ts-ignore
+            GetLimitMaxContentWidthCheckbox().checked = gUserConfig?.limitMaxContentWidth;
+            // @ts-ignore
+            GetMaxContentWidthControl().value = gUserConfig?.maxContentWidth;
+            // @ts-ignore
             configDialog.showModal();
     });
 
@@ -304,7 +346,11 @@ function SaveNewUserConfigFromDialog(configDialog)
         // @ts-ignore
         GetShowUnchangedLinesCheckbox().checked,
         // @ts-ignore
-        SanitizeNumberOfContextLinesInput(GetNumContextLinesControl().value)
+        SanitizeNumberOfContextLinesInput(GetNumContextLinesControl().value),
+        // @ts-ignore
+        GetLimitMaxContentWidthCheckbox().checked,
+        // @ts-ignore
+        SanitizeMaxContentWidthInput(GetMaxContentWidthControl().value)
     ));
 }
 
@@ -383,15 +429,29 @@ function InitializeToggleContextButton(toggleContextCallback)
 
 function SanitizeNumberOfContextLinesInput(value)
 {
-    if (!value) {
-        return 0;
+    return SanitizeIntegerInput(value, 0, DEFAULT_USER_CONFIG.numContextLines);
+}
+
+
+function SanitizeMaxContentWidthInput(value)
+{
+    // Min. value of 400 seems to avoid typical content to spill out of the tiles. Found by trial & error.
+    // Note: Same value also used in historydiff.html for 'config-dialog-max-content-width'.
+    return SanitizeIntegerInput(value, 400, DEFAULT_USER_CONFIG.maxContentWidth);
+}
+
+
+function SanitizeIntegerInput(value, minAllowedValue, valueOnError)
+{
+    if (value === undefined) {
+        return valueOnError;
     }
     if (Number.isInteger(value)) {
-        return value;
+        return Math.max(value, minAllowedValue);
     }
     const asInt = parseInt(value);
-    if (isNaN(asInt) || asInt < 0) {
-        return 0;
+    if (isNaN(asInt) || !Number.isInteger(asInt)) {
+        return valueOnError;
     }
-    return asInt;
+    return Math.max(asInt, minAllowedValue);
 }

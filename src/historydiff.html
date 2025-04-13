@@ -220,7 +220,20 @@
         <button id="config-dialog-show" title="Open configuration" style="visibility: hidden">Config</button>
     </div>
     <dialog id="config-dialog" style="margin: 0; left: auto; right: 5px; top: 5px">
-        <label for="config-dialog-show-unchanged-lines">
+        <label for="config-dialog-limit-content-width">
+            <span><b>Limit max. width:</b></span>
+            <input id="config-dialog-limit-content-width" type="checkbox" 
+                title="If checked, the max. width of the content is limited to the configured width.">
+        </label>
+        <br>
+        <label for="config-dialog-max-content-width">
+            <span><b>Max. content width in pixels:</b></span>
+            <input id="config-dialog-max-content-width" type="number" min="400" placeholder="Max. width in pixels"
+                title="The max. width of the content in pixels. Only relevant if 'Limit max. width' is checked." 
+                style="width: 60px">
+        </label>
+        <hr>
+        <label for="config-dialog-show-unchanged-lines" style="margin-top: 8px">
             <span><b>Show unchanged lines:</b></span>
             <input id="config-dialog-show-unchanged-lines" type="checkbox" 
                 title="If checked, all lines are shown. If unchecked, only lines containing inserted or removed content and the configured number of context lines above/below are shown.">

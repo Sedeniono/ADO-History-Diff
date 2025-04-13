@@ -5,7 +5,7 @@
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
 import { InitSharedGlobals } from './Globals.js';
-import { InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions } 
+import { GetUserConfig, InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions } 
     from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
 import { InitializeCutouts, ShowOrHideUnchangedLinesDependingOnConfiguration } from './Cutouts';
@@ -304,6 +304,8 @@ async function BuildAndSetHtmlFromUpdateTables(allUpdateTables)
 {
     const updateHtml = CreateHTMLForAllUpdates(allUpdateTables);
 
+    await ApplyMaxContentCellWidth();
+
     const displayField = GetHtmlDisplayField();
 
     // Set visibility to 'hidden': We need to insert the `updateHtml` into the DOM before we can calculate the cutouts.
@@ -427,10 +429,21 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
     }
     table.appendChild(tbody);
 
-    const div = document.createElement('div');
-    div.classList.add('single-update-tile');
-    div.append(header, table);
-    return {div, allContentCells};
+    const divSingleTile = document.createElement('div');
+    divSingleTile.classList.add('single-update-tile');
+    divSingleTile.classList.add('content-cell-max-width-config');
+    divSingleTile.append(header, table);
+    return {div: divSingleTile, allContentCells: allContentCells};
+}
+
+
+async function ApplyMaxContentCellWidth()
+{
+    const config = await GetUserConfig();
+    const newMaxWidth = config.limitMaxContentWidth ? `${config.maxContentWidth}px` : 'none';
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `.content-cell-max-width-config { max-width: ${newMaxWidth}; }`;
+    document.head.appendChild(styleElement);
 }
 
 
