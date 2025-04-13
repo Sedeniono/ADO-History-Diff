@@ -82,6 +82,7 @@
             box-shadow: 0 4px 6px 0 var(--callout-shadow-color, rgba(0, 0, 0, .132)), 0 0 3px 0 var(--callout-shadow-secondary-color, rgba(0, 0, 0, .108));
             /* If there are long lines where the browser does not automatically perform a text wrap, ensure that a horizontal
             scroll bar appears at the bottom of the tile. E.g. for long lines without spaces, lines in code regions, or deeply nested list.
+            This is especially important for the tile's max-width that the user can change, since the user might use rather small values.
             Note that overflow-y is not required because the tile height matches that of the displayed content always. */
             overflow-x: auto;
         }
@@ -224,16 +225,16 @@
         <button id="config-dialog-show" title="Open configuration" style="visibility: hidden">Config</button>
     </div>
     <dialog id="config-dialog" style="margin: 0; left: auto; right: 5px; top: 5px">
-        <label for="config-dialog-limit-content-width">
-            <span><b>Limit max. width:</b></span>
-            <input id="config-dialog-limit-content-width" type="checkbox" 
-                title="If checked, the max. width of the content is limited to the configured width.">
+        <label for="config-dialog-limit-tile-width">
+            <span><b>Limit max. tile width:</b></span>
+            <input id="config-dialog-limit-tile-width" type="checkbox" 
+                title="If checked, the max. width of the content tiles is limited to the configured width.">
         </label>
         <br>
-        <label for="config-dialog-max-content-width">
-            <span><b>Max. content width in pixels:</b></span>
-            <input id="config-dialog-max-content-width" type="number" min="300" placeholder="Max. width in pixels"
-                title="The max. width of the content in pixels. Only relevant if 'Limit max. width' is checked." 
+        <label for="config-dialog-max-tile-width">
+            <span><b>Max. tile width in pixels:</b></span>
+            <input id="config-dialog-max-tile-width" type="number" min="300" placeholder="Max. width in pixels"
+                title="The max. width of the content tiles in pixels. Only relevant if 'Limit max. width' is checked." 
                 style="width: 60px">
         </label>
         <hr>

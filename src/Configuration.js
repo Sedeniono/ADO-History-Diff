@@ -31,16 +31,16 @@ const USER_CONFIG_VERSION = 4;
  * @param {boolean} fieldFiltersDisabled
  * @param {boolean} showUnchangedLines
  * @param {number} numContextLines
- * @param {boolean} limitMaxContentWidth
- * @param {number} maxContentWidth
+ * @param {boolean} limitMaxTileWidth
+ * @param {number} maxTileWidth
  */
 function UserConfig(
     fieldFilters, 
     fieldFiltersDisabled, 
     showUnchangedLines, 
     numContextLines, 
-    limitMaxContentWidth, 
-    maxContentWidth)
+    limitMaxTileWidth, 
+    maxTileWidth)
 {
     /** 
      * We store some version in the config so that we can better deal with future changes to the extension
@@ -78,18 +78,19 @@ function UserConfig(
     this.numContextLines = numContextLines;
 
     /** 
-     * If true, content cells are limited to a max. width of `maxContentWidth`.
-     * Having very wide content cells can make the history hard to read for ultra-wide screens.
+     * If true, tiles are limited to a max. width of `limitMaxTileWidth`.
+     * Having very wide tiles can make the text hard to read for ultra-wide screens because the text lines are so wide.
+     * So the user might want to limit the max. width.
      * @type {boolean} 
      */
-    this.limitMaxContentWidth = limitMaxContentWidth;
+    this.limitMaxTileWidth = limitMaxTileWidth;
     
     /** 
-     * An integer >= 1. Specifies the max. width of the content cells.
-     * Only relevant if `limitMaxContentWidth` is true.
+     * An integer >= 1. Specifies the max. width of the tiles.
+     * Only relevant if `limitMaxTileWidth` is true.
      * @type {Number} 
      */
-    this.maxContentWidth = maxContentWidth;
+    this.maxTileWidth = maxTileWidth;
 }
 
 
@@ -193,12 +194,12 @@ async function LoadConfiguration(adoSDK)
             gUserConfig.numContextLines = DEFAULT_USER_CONFIG.numContextLines;
         }
         else if (gUserConfig.configVersion <= 3) {
-            gUserConfig.limitMaxContentWidth = DEFAULT_USER_CONFIG.limitMaxContentWidth;
-            gUserConfig.maxContentWidth = DEFAULT_USER_CONFIG.maxContentWidth;
+            gUserConfig.limitMaxTileWidth = DEFAULT_USER_CONFIG.limitMaxTileWidth;
+            gUserConfig.maxTileWidth = DEFAULT_USER_CONFIG.maxTileWidth;
         }
 
         gUserConfig.numContextLines = SanitizeNumberOfContextLinesInput(gUserConfig.numContextLines);
-        gUserConfig.maxContentWidth = SanitizeMaxContentWidthInput(gUserConfig.maxContentWidth);
+        gUserConfig.maxTileWidth = SanitizeMaxTileWidthInput(gUserConfig.maxTileWidth);
         gUserConfig.configVersion = USER_CONFIG_VERSION;
     }
     catch (ex) {
@@ -212,7 +213,7 @@ function SaveNewUserConfig(userConfig)
     try {
         gUserConfig = userConfig;
         gUserConfig.numContextLines = SanitizeNumberOfContextLinesInput(gUserConfig.numContextLines);
-        gUserConfig.maxContentWidth = SanitizeMaxContentWidthInput(gUserConfig.maxContentWidth);
+        gUserConfig.maxTileWidth = SanitizeMaxTileWidthInput(gUserConfig.maxTileWidth);
         gExtensionDataManager.setValue(USER_CONFIG_KEY, gUserConfig, {scopeType: 'User'});
     }
     catch (ex) {
@@ -252,14 +253,14 @@ function GetNumContextLinesControl()
     return GetHtmlElement('config-dialog-num-context-lines');
 }
 
-function GetLimitMaxContentWidthCheckbox()
+function GetLimitMaxTileWidthCheckbox()
 {
-    return GetHtmlElement('config-dialog-limit-content-width');
+    return GetHtmlElement('config-dialog-limit-tile-width');
 }
 
-function GetMaxContentWidthControl()
+function GetMaxTileWidthControl()
 {
-    return GetHtmlElement('config-dialog-max-content-width');
+    return GetHtmlElement('config-dialog-max-tile-width');
 }
 
 
@@ -302,9 +303,9 @@ function InitializeConfigDialog(configChangedCallback, toggleContextCallback)
             // @ts-ignore
             GetNumContextLinesControl().value = gUserConfig?.numContextLines;
             // @ts-ignore
-            GetLimitMaxContentWidthCheckbox().checked = gUserConfig?.limitMaxContentWidth;
+            GetLimitMaxTileWidthCheckbox().checked = gUserConfig?.limitMaxTileWidth;
             // @ts-ignore
-            GetMaxContentWidthControl().value = gUserConfig?.maxContentWidth;
+            GetMaxTileWidthControl().value = gUserConfig?.maxTileWidth;
             // @ts-ignore
             configDialog.showModal();
     });
@@ -348,9 +349,9 @@ function SaveNewUserConfigFromDialog(configDialog)
         // @ts-ignore
         SanitizeNumberOfContextLinesInput(GetNumContextLinesControl().value),
         // @ts-ignore
-        GetLimitMaxContentWidthCheckbox().checked,
+        GetLimitMaxTileWidthCheckbox().checked,
         // @ts-ignore
-        SanitizeMaxContentWidthInput(GetMaxContentWidthControl().value)
+        SanitizeMaxTileWidthInput(GetMaxTileWidthControl().value)
     ));
 }
 
@@ -433,11 +434,11 @@ function SanitizeNumberOfContextLinesInput(value)
 }
 
 
-function SanitizeMaxContentWidthInput(value)
+function SanitizeMaxTileWidthInput(value)
 {
     // A max-width of below 300px for the *whole* tile seems unreasonable in all cases in my tests.
-    // Note: Same value also used in historydiff.html for 'config-dialog-max-content-width'.
-    return SanitizeIntegerInput(value, 300, DEFAULT_USER_CONFIG.maxContentWidth);
+    // Note: Same value also used in historydiff.html for 'config-dialog-max-tile-width'.
+    return SanitizeIntegerInput(value, 300, DEFAULT_USER_CONFIG.maxTileWidth);
 }
 
 

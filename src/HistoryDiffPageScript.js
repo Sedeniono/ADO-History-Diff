@@ -440,8 +440,10 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
 async function ApplyMaxContentCellWidth()
 {
     const config = await GetUserConfig();
-    const tileMaxWidth = config.limitMaxContentWidth ? `${config.maxContentWidth}px` : 'none';
+    const tileMaxWidth = config.limitMaxTileWidth ? `${config.maxTileWidth}px` : 'none';
     const styleElement = document.createElement('style');
+    // Note that '.single-update-tile' contains 'overflow-x: auto' to ensure that content that is too
+    // wide does not spill over the tile's edge. Instead, a horizontal scrollbar appears.
     styleElement.textContent = `.tile-max-width-from-config { max-width: ${tileMaxWidth}; }`;
     document.head.appendChild(styleElement);
 }
