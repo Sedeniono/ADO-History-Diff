@@ -215,9 +215,9 @@
 
 <body>
     <div style="position: absolute; top: 15px; right: 18px">
-        <!-- The button labels are set for real in the javascript code. -->
-        <button id="toggle-context">Toggle context</button>
-        <button id="config-dialog-show" title="Open configuration">Config</button>
+        <!-- The button labels are set for real in the javascript code. To reduce flicker, we set them to 'hidden' initially. -->
+        <button id="toggle-context" title="Toggle context" style="visibility: hidden">Toggle context</button>
+        <button id="config-dialog-show" title="Open configuration" style="visibility: hidden">Config</button>
     </div>
     <dialog id="config-dialog" style="margin: 0; left: auto; right: 5px; top: 5px">
         <label for="config-dialog-show-unchanged-lines">

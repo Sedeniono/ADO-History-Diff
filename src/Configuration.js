@@ -240,6 +240,7 @@ function UpdateOpenConfigButtonWithNumFilters()
     const openConfigButton = GetOpenConfigButton();
     openConfigButton.textContent = '';
     openConfigButton.append(img, textNode);
+    openConfigButton.style.visibility = 'visible'; // Reset 'hidden' from historydiff.html.
 }
 
 
@@ -361,6 +362,7 @@ function UpdateToggleContextButton()
     }
 
     toggleButton.appendChild(img);
+    toggleButton.style.visibility = 'visible'; // Reset 'hidden' from historydiff.html.
 }
 
 
