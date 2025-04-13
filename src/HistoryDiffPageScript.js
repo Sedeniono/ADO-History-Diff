@@ -431,7 +431,7 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
 
     const divSingleTile = document.createElement('div');
     divSingleTile.classList.add('single-update-tile');
-    divSingleTile.classList.add('content-cell-max-width-config');
+    divSingleTile.classList.add('tile-max-width-from-config');
     divSingleTile.append(header, table);
     return {div: divSingleTile, allContentCells: allContentCells};
 }
@@ -440,9 +440,9 @@ function CreateHTMLForUpdateOnSingleDate(updateInfo)
 async function ApplyMaxContentCellWidth()
 {
     const config = await GetUserConfig();
-    const newMaxWidth = config.limitMaxContentWidth ? `${config.maxContentWidth}px` : 'none';
+    const tileMaxWidth = config.limitMaxContentWidth ? `${config.maxContentWidth}px` : 'none';
     const styleElement = document.createElement('style');
-    styleElement.textContent = `.content-cell-max-width-config { max-width: ${newMaxWidth}; }`;
+    styleElement.textContent = `.tile-max-width-from-config { max-width: ${tileMaxWidth}; }`;
     document.head.appendChild(styleElement);
 }
 

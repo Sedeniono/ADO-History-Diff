@@ -270,6 +270,8 @@ function GetTopAndBottomIncludingMarginsOf(htmlNode)
     //
     // We use option (2) here. We could temporarily set `overflow="auto"` here. But it doesn't seem to hurt to simply
     // set it always. It certainly prevents another layout pass in the browser. See CSS class 'in-td-context-hack'.
+    // Also note that we actually set `overflow-y` and not `overflow` to ensure that there is no conflict with the
+    // `overflow-x` setting in the CSS class 'single-update-tile'.
     //
     // Playground: https://jsfiddle.net/q54hg8d3/7/
 

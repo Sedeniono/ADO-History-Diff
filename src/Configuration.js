@@ -435,9 +435,9 @@ function SanitizeNumberOfContextLinesInput(value)
 
 function SanitizeMaxContentWidthInput(value)
 {
-    // Min. value of 400 seems to avoid typical content to spill out of the tiles. Found by trial & error.
+    // A max-width of below 300px for the *whole* tile seems unreasonable in all cases in my tests.
     // Note: Same value also used in historydiff.html for 'config-dialog-max-content-width'.
-    return SanitizeIntegerInput(value, 400, DEFAULT_USER_CONFIG.maxContentWidth);
+    return SanitizeIntegerInput(value, 300, DEFAULT_USER_CONFIG.maxContentWidth);
 }
 
 
