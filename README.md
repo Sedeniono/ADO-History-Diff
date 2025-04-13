@@ -40,7 +40,7 @@ Changes to the text are much easier to spot.
 * Via the [Microsoft marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff).
 * If you are using the on-premise Azure DevOps Server, you can also download the extension's vsix package from the [releases here on GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases) and install it directly without using the marketplace.
 
-Please see the chapters further down for more details on how to install the extension.
+Please see the sections below for more details on how to install the extension.
 
 
 **Requirements:**
@@ -66,7 +66,7 @@ If you want to build the vsix package yourself (also compare the [official Micro
 **Inspecting the vsix package:**  
 If you want to inspect the contents of the vsix package e.g. for security auditing purposes, it can be extracted using tools such as [7-zip](https://www.7-zip.org/).
 Note that the html and javascript files have been minimized and merged via [webpack](https://webpack.js.org/) to improve loading times.
-So I suggest to read the original source from the [GitHub repository](https://github.com/Sedeniono/ADO-History-Diff) instead.
+So I suggest reading the original source from the [GitHub repository](https://github.com/Sedeniono/ADO-History-Diff) instead.
 You can then build the vsix package yourself (`npm run build`, see above) and verify that the content of your manually produced vsix package is the same as in the released vsix package (from the marketplace or GitHub releases page).
 
 
@@ -93,7 +93,7 @@ Note that a `*` wildcard can be used to match any number of arbitrary characters
 For example, `description`, `Desc*`, `*SCRIPT*` and `*tion` will all match e.g. the field `Description`.
 To make entering fields easier, the fields of the currently active work item can be selected from a dropdown (Edge and Chrome show a dropdown button directly, Firefox users need to double click or use the arrow keys to show it).
 
-The configuration dialog also allows to disable all configured filters without deleting them; the intention is to allow the user to temporarily view the full history without loosing the configured filters.
+The configuration dialog also allows to disable all configured filters without deleting them; the intention is to allow the user to temporarily view the full history without losing the configured filters.
 
 All settings are stored per user on the server using [ADO's data storage facilities](https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage).
 
@@ -104,7 +104,7 @@ If you choose to show only changed lines, `N >= 0` additional lines above and be
 The value of `N` can be configured in the settings (right button in the top right corner).
 A value of `N=0` means that just the lines containing the changes are shown.
 Note that for values `N>0`, the extension merges consecutive "context sections".
-They are merged also if the distance between the sections would be less than approximately 1 line. 
+They are also merged when the distance between the sections is less than approximately one line. 
 
 All settings are stored per user on the server using [ADO's data storage facilities](https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage).
 
@@ -114,7 +114,7 @@ All settings are stored per user on the server using [ADO's data storage facilit
 
 ## Uploading the extension to Azure DevOps Server
 
-See the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022). In short, you have to options:
+See the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/marketplace/install-extension?view=azure-devops-2022). In short, you have two options:
 1. Option 1: Direct installation from the marketplace.  
    In the web interface of your Azure DevOps Server, go to `Collection Settings` &rarr; `Extensions` &rarr; `Browse marketplace` (in the top right corner) &rarr; search for "Sedenion.HistoryDiff" to find the extension and click on it &rarr; `Get it free` &rarr; select the target collection from the drop down list &rarr; hit `Install` &rarr; `Proceed to collection`.
 2. Option 2: Manual upload of the vsix package.
