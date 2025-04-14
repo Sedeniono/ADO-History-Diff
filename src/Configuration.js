@@ -94,10 +94,14 @@ function UserConfig(
 }
 
 
-// In earlier version of the HistoryDiff extension, we hid the "Rev" (=revision) and stack rank fields from users always.
-// They clutter up the history quite a lot, and are probably uninteresting for many users. Hence we want to hide them by
-// default. (We show these fields at all due to GitHub issues #2 and #3.)
-const DEFAULT_USER_CONFIG = new UserConfig(['Rev', 'Stack Rank'], false, false, 3, true, 1200);
+// Notes:
+// - fieldFilters: In earlier version of the HistoryDiff extension, we hid the "Rev" (=revision) and stack rank fields 
+//   from users always. They clutter up the history quite a lot, and are probably uninteresting for many users. Hence
+//   we want to hide them by default. (We show these fields at all due to GitHub issues #2 and #3.)
+// - maxTileWidth: The value was found by considering typical screen widths of 1680px and 1920px at various zoom levels
+//   and with the ADO side bar collapsed and expanded, and considering where the config buttons end up being placed. 
+//   The value was found to be reasonable in most cases.
+const DEFAULT_USER_CONFIG = new UserConfig(['Rev', 'Stack Rank'], false, false, 3, true, 1020);
 
 var gUserConfig = DEFAULT_USER_CONFIG;
 
