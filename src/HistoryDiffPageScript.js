@@ -233,13 +233,16 @@ function GetHtmlAfterResizeUpdater()
         }
     };
 
-    // Don't react to every resize, because that would be very CPU intensive.
-    // https://stackoverflow.com/a/45905199/3740047
     let timer = null;
     return (event) => {
+        RepositionConfigButtons();
+
         if (timer) {
             clearTimeout(timer);
         }
+
+        // Don't recompute the tiles in every resize, because that would be very CPU intensive.
+        // https://stackoverflow.com/a/45905199/3740047
         // 250ms seems to work well in practice.
         timer = setTimeout(updateFunc, 250, event);
     };
@@ -322,6 +325,8 @@ async function BuildAndSetHtmlFromUpdateTables(allUpdateTables)
     await InitializeCutouts(updateHtml, lineHeight);
     await ShowOrHideUnchangedLinesDependingOnConfiguration();
 
+    RepositionConfigButtons();
+
     displayField.style.visibility = 'visible';
 }
 
@@ -361,7 +366,8 @@ function CreateHTMLForAllUpdates(allUpdateTables)
     let allContentCells = [];
 
     const divAllUpdates = document.createElement('div');
-    divAllUpdates.classList.add('tile-container');
+    divAllUpdates.classList.add('tiles-container');
+    divAllUpdates.id = 'tiles-container';
 
     for (const updateInfo of allUpdateTables) {
         const html = CreateHTMLForUpdateOnSingleDate(updateInfo);
@@ -446,6 +452,36 @@ async function ApplyMaxContentCellWidth()
     // wide does not spill over the tile's edge. Instead, a horizontal scrollbar appears.
     styleElement.textContent = `.tile-max-width-from-config { max-width: ${tileMaxWidth}; }`;
     document.head.appendChild(styleElement);
+}
+
+
+function RepositionConfigButtons() 
+{
+    const topButtons = document.getElementById('top-config-buttons');
+    const tilesContainer = document.getElementById('tiles-container'); 
+    if (!topButtons || !tilesContainer) {
+        return;
+    }
+
+    const tilesRect = tilesContainer.getBoundingClientRect();
+    const buttonsWidth = topButtons.scrollWidth;
+    
+    const gap = 8; // Gap in pixels between the right border of the tiles and the buttons.
+    if (tilesRect?.width && buttonsWidth &&
+        document.body.scrollWidth - tilesRect.right >= buttonsWidth + gap) {
+        // Enough space, so position buttons just to the right of the tile.
+        topButtons.style.top = `${tilesRect.top}px`;
+        topButtons.style.left = `${tilesRect.right + gap}px`;
+        topButtons.style.right = 'auto';
+    } 
+    else {
+        // Not enough space, let buttons overlap with topmost tile.
+        // The top value was chosen so that the buttons are somewhat within the tile, basically on the same height
+        // as the heading of the first tile.
+        topButtons.style.top = '15px';
+        topButtons.style.left = 'auto';
+        topButtons.style.right = '18px';
+    }
 }
 
 

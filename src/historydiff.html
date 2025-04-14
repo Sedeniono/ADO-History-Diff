@@ -62,8 +62,8 @@
             background-color: rgb(var(--palette-neutral-6, 239, 239, 239));
         }
 
-        div.tile-container {
-            display: grid;
+        div.tiles-container {
+            display: inline-grid;
             justify-content: space-between;
             gap: 1.5rem;
         }
@@ -219,7 +219,8 @@
 </head>
 
 <body>
-    <div style="position: absolute; top: 15px; right: 18px">
+    <!-- The buttons are positioned in RepositionConfigButtons() in the javascript code. -->
+    <div id="top-config-buttons" style="white-space: nowrap; position: absolute; top: 15px; right: 18px">
         <!-- The button labels are set for real in the javascript code. To reduce flicker, we set them to 'hidden' initially. -->
         <button id="toggle-context" title="Toggle context" style="visibility: hidden">Toggle context</button>
         <button id="config-dialog-show" title="Open configuration" style="visibility: hidden">Config</button>
