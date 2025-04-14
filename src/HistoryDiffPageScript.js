@@ -228,8 +228,9 @@ function GetHtmlAfterResizeUpdater()
     const updateFunc = () => {
         if (gAllUpdateTables) {
             const origScrollPos = document.documentElement.scrollTop;
-            BuildAndSetHtmlFromUpdateTables(gAllUpdateTables);
-            document.documentElement.scrollTo({left: 0, top: origScrollPos, behavior: 'instant'});
+            BuildAndSetHtmlFromUpdateTables(gAllUpdateTables).then(() => {
+                document.documentElement.scrollTo({left: 0, top: origScrollPos, behavior: 'instant'});
+            });
         }
     };
 
