@@ -17,7 +17,7 @@
         }
         img {
             /* If the user simply pasted an image into e.g. the description field without dragging on the scale handles,
-            it ends up with its original size in our history diff. Prevent that the image is wider than the extension's iframe. */
+            it ends up with its original size in our history diff. Prevent that the image is wider than our tiles. */
             max-width:100%;
         }
         del.diff-class {
@@ -110,6 +110,11 @@
         a {
             /* https://developer.microsoft.com/en-us/azure-devops/develop/styles */
             color: var(--communication-foreground, rgb(0, 90, 158));
+        }
+
+        /* Code in a description */
+        pre {
+            background-color: rgba(var(--palette-neutral-8,234, 234, 234),1);
         }
 
         .cutout-border-base {
