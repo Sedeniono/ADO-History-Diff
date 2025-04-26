@@ -61,12 +61,16 @@ export function GetIdentityName(identity)
     // '<...>' part was omitted and sometimes not. E.g. the "revisedBy" property of work item updates includes it, while e.g. 
     // "System.ChangedBy" does not contain it. Very strange. If '<...>' is present, the 'identity' also does not contain
     // an avatar. Unfortunately, at least in the case of work item updates, we only have the "revisedBy" property as reliable
-    // source for the author of the changes; some update revisions simply contain no other property with that info. So  we 
+    // source for the author of the changes; some update revisions simply contain no other property with that info. So we 
     // cannot simply use some other source that does not contain the '<...>'.
     // The official ADO history tab does not show the '<...>'.
     // Therefore: Simply strip out the '<...>' directly. And ignore that we cannot show an avatar image (in GetIdentityAvatarHtml()).
     if (name?.startsWith('Microsoft.TeamFoundation.System <')) {
         return 'Microsoft.TeamFoundation.System';
+    }
+    // Similar: Seen when the GitHub integration in ADO Services (i.e. the cloud version) performs work item changes.
+    else if (name?.startsWith('Azure Boards <')) {
+        return 'Azure Boards';
     }
 
     return EscapeHtml(name ?? 'UNKNOWN NAME');
