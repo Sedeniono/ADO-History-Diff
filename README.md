@@ -8,8 +8,10 @@
 - [Basic installation and requirements](#basic-installation-and-requirements)
 - [Details about the new "History" tab](#details-about-the-new-history-tab)
   - [Basic functionality](#basic-functionality)
-  - [Filters](#filters)
-  - [Showing only unchanged lines](#showing-only-unchanged-lines)
+  - [Configuration](#configuration)
+    - [Filters](#filters)
+    - [Limiting the maximum width of the tiles](#limiting-the-maximum-width-of-the-tiles)
+    - [Showing only unchanged lines](#showing-only-unchanged-lines)
 - [On-premise installation (Azure DevOps Server)](#on-premise-installation-azure-devops-server)
   - [Uploading the extension to Azure DevOps Server](#uploading-the-extension-to-azure-devops-server)
   - [Enabling/configuring the history tab for work item types](#enablingconfiguring-the-history-tab-for-work-item-types)
@@ -86,27 +88,33 @@ Removed/old fragments are highlighted with a red background, new fragments with 
 The extension is aware of the dark mode theme and uses appropriate colors.
 Note: Changing the theme in Azure DevOps (light to dark or vice versa) might not immediately change all colors. The page should be reloaded after changing the theme.
 
-## Filters
-Using the "settings" button in the top right corner of the history tab, users can filter out fields that are uninteresting to them, such as work logging related fields or fields used by scripts for housekeeping purposes.
+
+## Configuration
+Using the "settings" button in the top right corner of the history tab, users can configure a few things.
+All settings are stored per user on the server using [ADO's data storage facilities](https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage).
+
+
+### Filters
+Users can filter out fields that are uninteresting to them, such as work logging related fields or fields used by scripts for housekeeping purposes.
 The field names as shown in the history are matched completely by default and case-insensitively.
 Note that a `*` wildcard can be used to match any number of arbitrary characters.
-For example, `description`, `Desc*`, `*SCRIPT*` and `*tion` will all match e.g. the field `Description`.
+For example, `description`, `Desc*`, `*SCRIPT*` and `*tion` will all match the field `Description`.
 To make entering fields easier, the fields of the currently active work item can be selected from a dropdown (Edge and Chrome show a dropdown button directly, Firefox users need to double click or use the arrow keys to show it).
 
 The configuration dialog also allows to disable all configured filters without deleting them; the intention is to allow the user to temporarily view the full history without losing the configured filters.
 
-All settings are stored per user on the server using [ADO's data storage facilities](https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage).
+
+### Limiting the maximum width of the tiles
+Users can choose to limit the maximum width of the history tiles. This option is available in the configuration dialog and helps improve readability on very wide screens.
 
 
-## Showing only unchanged lines
-The left button in the top right corner allows to toggle between showing all lines, or only the changed ones.
+### Showing only unchanged lines
+The left button in the top right corner of the history tab allows to toggle between showing all lines, or only the changed ones.
 If you choose to show only changed lines, `N >= 0` additional lines above and below each change is displayed.
-The value of `N` can be configured in the settings (right button in the top right corner).
+The value of `N` can be configured in the settings dialog (right button in the top right corner).
 A value of `N=0` means that just the lines containing the changes are shown.
 Note that for values `N>0`, the extension merges consecutive "context sections".
 They are also merged when the distance between the sections is less than approximately one line. 
-
-All settings are stored per user on the server using [ADO's data storage facilities](https://learn.microsoft.com/en-us/azure/devops/extend/develop/data-storage).
 
 
 
