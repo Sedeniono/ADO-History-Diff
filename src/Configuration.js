@@ -232,6 +232,11 @@ function AnyFieldFiltersEnabled()
 }
 
 
+export function GetConfigDialog()
+{
+    return GetHtmlElement('config-dialog');
+}
+
 function GetOpenConfigButton()
 {
     return GetHtmlElement('config-dialog-show');
@@ -291,7 +296,7 @@ function InitializeConfigDialog(configChangedCallback, toggleContextCallback)
     UpdateOpenConfigButtonWithNumFilters();
     InitializeToggleContextButton(toggleContextCallback);
 
-    const configDialog = GetHtmlElement('config-dialog');
+    const configDialog = GetConfigDialog();
     const fieldFiltersTable = GetHtmlElement('config-dialog-field-filters-table');
     const disabledFieldFiltersCheckbox = GetDisabledAllFieldFiltersCheckbox();
     

@@ -5,8 +5,8 @@
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
 import { InitSharedGlobals } from './Globals.js';
-import { GetUserConfig, InitializeConfiguration, IsFieldShownByUserConfig, UpdateConfigDialogFieldSuggestions } 
-    from './Configuration';
+import { GetUserConfig, InitializeConfiguration, IsFieldShownByUserConfig, 
+    UpdateConfigDialogFieldSuggestions, GetConfigDialog } from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
 import { InitializeCutouts, ShowOrHideUnchangedLinesDependingOnConfiguration } from './Cutouts';
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace, GetHtmlElement } from './Utils';
@@ -236,7 +236,7 @@ function GetHtmlAfterResizeUpdater()
 
     let timer = null;
     return (event) => {
-        RepositionConfigButtons();
+        RepositionConfigButtonsAndDialog();
 
         if (timer) {
             clearTimeout(timer);
@@ -326,7 +326,7 @@ async function BuildAndSetHtmlFromUpdateTables(allUpdateTables)
     await InitializeCutouts(updateHtml, lineHeight);
     await ShowOrHideUnchangedLinesDependingOnConfiguration();
 
-    RepositionConfigButtons();
+    RepositionConfigButtonsAndDialog();
 
     displayField.style.visibility = 'visible';
 }
@@ -456,7 +456,7 @@ async function ApplyMaxContentCellWidth()
 }
 
 
-function RepositionConfigButtons() 
+function RepositionConfigButtonsAndDialog() 
 {
     const topButtons = document.getElementById('top-config-buttons');
     const tilesContainer = document.getElementById('tiles-container'); 
@@ -485,6 +485,13 @@ function RepositionConfigButtons()
     }
 
     topButtons.style.visibility = 'visible';
+
+    // Open the dialog on top of the config button.
+    const configDialog = GetConfigDialog();
+    const topButtonsRect = topButtons.getBoundingClientRect();
+    if (configDialog && topButtonsRect?.width) {
+        configDialog.style.right = `${document.body.scrollWidth - topButtonsRect.right + 3}px`;
+    }
 }
 
 
