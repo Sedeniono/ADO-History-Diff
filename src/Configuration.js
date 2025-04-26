@@ -382,10 +382,12 @@ function AddFieldFilterControlRowToDialog(fieldFiltersTable, filterString)
     newInput.setAttribute('list', 'config-dialog-suggested-fields');
     newInput.size = 30;
     newInput.value = filterString;
+    newInput.title = 'Any field name that matches the given string case-insensitively will be hidden. A wildcard (*) can be used to represent any number of characters.';
 
     const newDeleteButton = document.createElement('button');
     newDeleteButton.classList.add('delete-filter-button');
     newDeleteButton.textContent = '❌';
+    newDeleteButton.title = 'Remove the field filter on the left.';
     
     const newRow = document.createElement('tr');
     newRow.appendChild(document.createElement('td')).appendChild(newInput);

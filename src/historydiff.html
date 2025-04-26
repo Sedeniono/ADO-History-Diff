@@ -241,7 +241,7 @@
         <label for="config-dialog-max-tile-width">
             <span><b>Max. tile width in pixels:</b></span>
             <input id="config-dialog-max-tile-width" type="number" min="300" placeholder="Max. width in pixels"
-                title="The max. width of the content tiles in pixels. Only relevant if 'Limit max. width' is checked." 
+                title="The max. width of the content tiles in pixels. Only relevant if 'Limit max. tile width' is checked." 
                 style="width: 60px">
         </label>
         <hr>
@@ -254,23 +254,23 @@
         <label for="config-dialog-num-context-lines">
             <span><b>Number of context lines:</b></span>
             <input id="config-dialog-num-context-lines" type="number" min="0" placeholder="Number of context lines"
-                title="The number of context lines to show above and below of changed lines. Only relevant if 'Show unchanged lines' is checked." 
+                title="The number of context lines to show above and below of changed lines. Only relevant if 'Show unchanged lines' is not checked." 
                 style="width: 50px">
         </label>
         <hr>
         <label for="config-dialog-disable-all-field-filters" style="margin-top: 8px">
             <span><b>Disable all field filters:</b></span>
-            <input id="config-dialog-disable-all-field-filters" type="checkbox">
+            <input id="config-dialog-disable-all-field-filters" type="checkbox" title="If checked, the field filters below are ignored. Instead, all fields are shown.">
         </label>
         <br>
         <b>Hide fields matching any of:</b><br>
         (case-insensitive; * means any characters)
         <table id="config-dialog-field-filters-table" style="border-spacing: 0; margin-top: 5px; margin-bottom: 5px"></table>
         <datalist id="config-dialog-suggested-fields"></datalist>
-        <button id="config-dialog-add-field-filter" style="margin-bottom: 8px">Add filter</button>
+        <button id="config-dialog-add-field-filter" style="margin-bottom: 8px" title="Adds a new field filter.">Add filter</button>
         <div style="float:right">
-            <button id="config-dialog-ok">OK</button>
-            <button id="config-dialog-cancel">Cancel</button>
+            <button id="config-dialog-ok" title="Saves the settings and closes the dialog.">OK</button>
+            <button id="config-dialog-cancel" title="Closes the dialog without saving the settings.">Cancel</button>
         </div>
         <hr>
         <p style="font-size: 0.7em; min-width: 100%; width: 0; margin-top: 8px; margin-bottom: 2px">
