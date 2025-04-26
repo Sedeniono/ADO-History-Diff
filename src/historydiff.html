@@ -224,11 +224,12 @@
 </head>
 
 <body>
-    <!-- The buttons are positioned in RepositionConfigButtons() in the javascript code. -->
-    <div id="top-config-buttons" style="white-space: nowrap; position: absolute; top: 15px; right: 18px">
-        <!-- The button labels are set for real in the javascript code. To reduce flicker, we set them to 'hidden' initially. -->
-        <button id="toggle-context" title="Toggle context" style="visibility: hidden">Toggle context</button>
-        <button id="config-dialog-show" title="Open configuration" style="visibility: hidden">Config</button>
+    <!-- The buttons are positioned in RepositionConfigButtons() in the javascript code. They are shown only once 
+     their position is set to reduce flicker. -->
+    <div id="top-config-buttons" style="white-space: nowrap; position: absolute; top: 15px; right: 18px; visibility: hidden">
+        <!-- The button labels are set for real in the javascript code. -->
+        <button id="toggle-context" title="Toggle context">Toggle context</button>
+        <button id="config-dialog-show" title="Open configuration">Config</button>
     </div>
     <dialog id="config-dialog" style="margin: 0; left: auto; right: 5px; top: 5px">
         <label for="config-dialog-limit-tile-width">

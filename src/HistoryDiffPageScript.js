@@ -483,6 +483,8 @@ function RepositionConfigButtons()
         topButtons.style.left = 'auto';
         topButtons.style.right = '18px';
     }
+
+    topButtons.style.visibility = 'visible';
 }
 
 
