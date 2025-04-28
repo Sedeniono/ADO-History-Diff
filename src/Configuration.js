@@ -33,6 +33,7 @@ const USER_CONFIG_VERSION = 4;
  * @param {number} numContextLines
  * @param {boolean} limitMaxTileWidth
  * @param {number} maxTileWidth
+ * @param {Date} rateNoticeDate
  */
 function UserConfig(
     fieldFilters, 
@@ -40,7 +41,8 @@ function UserConfig(
     showUnchangedLines, 
     numContextLines, 
     limitMaxTileWidth, 
-    maxTileWidth)
+    maxTileWidth,
+    rateNoticeDate)
 {
     /** 
      * We store some version in the config so that we can better deal with future changes to the extension
@@ -91,7 +93,19 @@ function UserConfig(
      * @type {Number} 
      */
     this.maxTileWidth = maxTileWidth;
+
+    /**
+     * We show the "please rate" notice after this date.
+     * @type {Date}
+     */
+    this.rateNoticeDate = rateNoticeDate;
 }
+
+
+// We will show a "please rate" notice after this many milliseconds have passed since a user first used the extension.
+// 30 days seems like a reasonable time for users to test the extension reasonably well.
+// (We ignore daylight saving time changes for this; one hour more or less doesn't matter.)
+const RATE_NOTICE_DELAY_IN_MS = 30 * 24 * 60 * 60 * 1000;
 
 
 // Notes:
@@ -101,7 +115,14 @@ function UserConfig(
 // - maxTileWidth: The value was found by considering typical screen widths of 1680px and 1920px at various zoom levels
 //   and with the ADO side bar collapsed and expanded, and considering where the config buttons end up being placed. 
 //   The value was found to be reasonable in most cases.
-const DEFAULT_USER_CONFIG = new UserConfig(['Rev', 'Stack Rank'], false, false, 3, true, 1020);
+const DEFAULT_USER_CONFIG = new UserConfig(
+    /* fieldFilters */ ['Rev', 'Stack Rank'], 
+    /* fieldFiltersDisabled */ false, 
+    /* showUnchangedLines */ false, 
+    /* numContextLines */ 3, 
+    /* limitMaxTileWidth */ true, 
+    /* maxTileWidth */ 1020, 
+    /* rateNoticeDate */ new Date(Date.now() + RATE_NOTICE_DELAY_IN_MS));
 
 var gUserConfig = DEFAULT_USER_CONFIG;
 
@@ -204,7 +225,14 @@ async function LoadConfiguration(adoSDK)
 
         gUserConfig.numContextLines = SanitizeNumberOfContextLinesInput(gUserConfig.numContextLines);
         gUserConfig.maxTileWidth = SanitizeMaxTileWidthInput(gUserConfig.maxTileWidth);
+        if (!gUserConfig.rateNoticeDate) {
+            gUserConfig.rateNoticeDate = DEFAULT_USER_CONFIG.rateNoticeDate;
+        }
         gUserConfig.configVersion = USER_CONFIG_VERSION;
+
+        // Save the config so that the `rateNoticeDate` is saved on the first use of the extension,
+        // so that we can show the "please rate" notice later.
+        SaveNewUserConfig(gUserConfig); 
     }
     catch (ex) {
         console.log(`HistoryDiff: Exception trying to load configuration: ${ex}`);
@@ -359,7 +387,8 @@ function SaveNewUserConfigFromDialog(configDialog)
         // @ts-ignore
         GetLimitMaxTileWidthCheckbox().checked,
         // @ts-ignore
-        SanitizeMaxTileWidthInput(GetMaxTileWidthControl().value)
+        SanitizeMaxTileWidthInput(GetMaxTileWidthControl().value),
+        gUserConfig?.rateNoticeDate ?? DEFAULT_USER_CONFIG.rateNoticeDate
     ));
 }
 
@@ -464,4 +493,14 @@ function SanitizeIntegerInput(value, minAllowedValue, valueOnError)
         return valueOnError;
     }
     return Math.max(asInt, minAllowedValue);
+}
+
+
+/**
+ * @param {Date} date 
+ */
+export function SetRateNoticeDate(date)
+{
+    gUserConfig.rateNoticeDate = date;
+    SaveNewUserConfig(gUserConfig);
 }
