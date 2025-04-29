@@ -20,6 +20,7 @@
 - [Cloud installation (Azure DevOps Services)](#cloud-installation-azure-devops-services)
   - [Installation for the "Inheritance" process model](#installation-for-the-inheritance-process-model-1)
   - [Installation for the "Hosted XML" process model](#installation-for-the-hosted-xml-process-model)
+- [Updating the extension](#updating-the-extension)
 - [Future ideas](#future-ideas)
 
 
@@ -289,6 +290,17 @@ The installation of the extension should be the same as for the "Inheritance" mo
 However, you need to add the new "History" tab manually to the work item types by modifying their XML definition files.
 For information on how to do this, please refer to the [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/hosted-xml-process-model?view=azure-devops) (especially on how to [modify](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/import-process/customize-process?view=azure-devops) and [import](https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/import-process/import-process?view=azure-devops) processes).
 Apart from the import/export steps, the steps of modifying the actual XML file should be the same as for the "On-premises XML" process model outlined above.
+
+
+
+# Updating the extension
+
+If the extension is installed from the marketplace and a newer version is available, it updates automatically.
+Azure DevOps Services (cloud) typically updates within a few minutes after a new version is released on the marketplace, while Azure DevOps Server (on-premises) might take roughly one day to pick up the latest version.
+
+If the extension is not updated automatically in the on-premises variant after more than one day, you can try to update it manually:
+First, download the latest vsix package of the extension from the [marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff) or [GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases).
+Then, in the web interface of your Azure DevOps Server, navigate to `Collection Settings` &rarr; `Extensions` &rarr; `Browse local extensions` (in the top right corner) &rarr; scroll down and select `Manage extensions` &rarr; then hover your mouse over the History Diff entry so that three dots `...` appear to the right of the name &rarr; click the three dots &rarr; click `Update` and choose the vsix package &rarr; click `Upload`, and wait until the `Verifying` message disappears and the new version number appears next to the name of the History Diff extension. This may take a few seconds to a few minutes. The new version is now active.
 
 
 
