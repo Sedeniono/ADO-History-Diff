@@ -21,6 +21,7 @@
   - [Installation for the "Inheritance" process model](#installation-for-the-inheritance-process-model-1)
   - [Installation for the "Hosted XML" process model](#installation-for-the-hosted-xml-process-model)
 - [Updating the extension](#updating-the-extension)
+- [About authentication requests in Firefox](#about-authentication-requests-in-firefox)
 - [Future ideas](#future-ideas)
 
 
@@ -301,6 +302,25 @@ Azure DevOps Services (cloud) typically updates within a few minutes after a new
 If the extension is not updated automatically in the on-premises variant after more than one day, you can try to update it manually:
 First, download the latest vsix package of the extension from the [marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff) or [GitHub](https://github.com/Sedeniono/ADO-History-Diff/releases).
 Then, in the web interface of your Azure DevOps Server, navigate to `Collection Settings` &rarr; `Extensions` &rarr; `Browse local extensions` (in the top right corner) &rarr; scroll down and select `Manage extensions` &rarr; then hover your mouse over the History Diff entry so that three dots `...` appear to the right of the name &rarr; click the three dots &rarr; click `Update` and choose the vsix package &rarr; click `Upload`, and wait until the `Verifying` message disappears and the new version number appears next to the name of the History Diff extension. This may take a few seconds to a few minutes. The new version is now active.
+
+
+# About authentication requests in Firefox
+In some environments Firefox might ask you to reenter your credentials when opening the history tab.
+This happens when Firefox tries to load resources not directly tied to a work item, such as the user avatars or other content (e.g. images) appearing in the work item's description field or comments.
+It seems that Chromium based browsers perform the necessary authentication automatically because they realize that your are logged into ADO itself, and the history page is served by the same origin.
+Firefox, on the other hand, treats the history page as separate and thus requests another authentication. There does not seem a way to tell Firefox to behave similar to the Chromium browsers.
+See [THIS](https://stackoverflow.com/q/79423754/3740047) stackoverflow question for more technical details (and please get in touch in case you know the precise reason!).
+
+Currently, I am aware of the following possibilities to cope with this issue:
+* Just re-authenticate, even though it is annoying.
+* Cancel the second authentication request. Avatars will most likely be missing, and some content in the diff (e.g. images) might not load.
+* Use a different browser such as Google Chrome or Edge.
+* Some companies employ single sign-on via the Windows NTLM protocol. If you can access the main ADO page without getting any authentication at all in Google Chrome or Edge, then this might have been setup by your IT department in the Windows settings. Chromium based browsers read the Windows settings value, but Firefox does not. The settings can be found in the "Internet Options", see the following image:<br><img src="images/NTLM.png" alt="NTLM-setup" height="300"><br>You need to add the domains in this list to the [Firefox settings](https://support.mozilla.org/en-US/kb/Firefox%20asks%20for%20user%20name%20and%20password%20on%20internal%20sites):
+  * Open Firefox.
+  * Type `about:config` in the address bar, and accept the risk warning.
+  * Filter for `network.automatic-ntlm-auth.trusted-uris`.
+  * Add the end of the domains from the Windows settings, without the `https://` and without `*`. Each entry matches the end of the domain. Separate multiple entries by a comma.
+
 
 
 
