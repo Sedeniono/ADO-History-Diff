@@ -6,8 +6,7 @@
 import { TryGetHTMLLinkNameAndUrlForArtifactLink } from './ArtifactLinkToURL';
 import { gWorkItemRESTClient } from './Globals';
 import { EscapeHtml, FormatDate, GetIdentityAvatarHtml, GetIdentityName, RemoveStyle } from './Utils';
-// @ts-ignore
-import * as htmldiff from 'node-htmldiff';
+import htmldiff from 'htmldiff';
 
 // An enum that holds the known field types. E.g. FieldTypeEnum.Html === 4.
 // It is basically https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/fieldtype,

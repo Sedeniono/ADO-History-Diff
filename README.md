@@ -80,7 +80,7 @@ The extension adds a new tab called "History" on the work item form.
 It does **not** modify the existing ADO history page because this is not possible with an extension to the best of my knowledge.
 
 When opening the new "History" tab, the extension gets all previous changes of the work item and the comment history via the Azure DevOps REST API.
-For HTML-based fields (e.g. the "Description" field, comments, or custom fields of type "Text (multiple lines)"), the extension uses [htmldiff](https://www.npmjs.com/package/node-htmldiff) to compute a diff that is aware of HTML elements.
+For HTML-based fields (e.g. the "Description" field, comments, or custom fields of type "Text (multiple lines)"), the extension uses a [custom fork of htmldiff](https://github.com/Sedeniono/htmldiff.js) to compute a diff that is aware of HTML elements.
 String fields are diffed as ordinary strings (actually, using the same library, but with special characters escaped).
 For all other field types, computing a diff makes no sense and the entire old and new values are shown directly.
 The extension also shows the comments of new relations/links, but only the newest version of the comment text. ADO does not provide an API to query the history of relation/link comments (in contrast to the work item comments).
@@ -305,7 +305,7 @@ Then, in the web interface of your Azure DevOps Server, navigate to `Collection 
 
 
 # Future ideas
-* Show pure formatting changes. Maybe fork and try to improve [htmldiff](https://www.npmjs.com/package/node-htmldiff). Or possibly better, use Wikipedia's [VisualDiff](https://www.mediawiki.org/wiki/Special:MyLanguage/visual_diffs) from the [VisualEditor](https://github.com/wikimedia/mediawiki-extensions-VisualEditor) (but has more dependencies). Or port [DaisyDiff](https://github.com/DaisyDiff/DaisyDiff).
+* Show pure formatting changes better. Implement it in my fork [Sedeniono/htmldiff.js](https://github.com/Sedeniono/htmldiff.js)? Or use Wikipedia's [VisualDiff](https://www.mediawiki.org/wiki/Special:MyLanguage/visual_diffs) from the [VisualEditor](https://github.com/wikimedia/mediawiki-extensions-VisualEditor) (but has more dependencies). Or port [DaisyDiff](https://github.com/DaisyDiff/DaisyDiff).
 * Once [markdown is available in Azure DevOps work items](https://developercommunity.visualstudio.com/t/add-markdown-support-in-discussions/365826), support it.
 * Support GitHub and remote work item links.
 * Support test cases (`Microsoft.VSTS.TCM.Steps`, `Microsoft.VSTS.TCM.LocalDataSource`, `Microsoft.VSTS.TCM.Parameters`).

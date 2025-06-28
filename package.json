@@ -8,7 +8,7 @@
   "dependencies": {
     "azure-devops-extension-api": "^4.251.0",
     "azure-devops-extension-sdk": "^4.0.2",
-    "node-htmldiff": "^0.9.4"
+    "htmldiff": "github:Sedeniono/htmldiff.js"
   },
   "devDependencies": {
     "html-webpack-plugin": "^5.6.3",

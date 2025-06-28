@@ -4,8 +4,7 @@
 // @ts-check
 
 
-// @ts-ignore
-import * as htmldiff from 'node-htmldiff';
+import htmldiff from 'htmldiff';
 
 
 const gReplaceEntityMap = {
