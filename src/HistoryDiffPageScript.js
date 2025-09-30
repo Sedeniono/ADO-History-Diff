@@ -4,7 +4,7 @@
 // @ts-check
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
-import { InitSharedGlobals } from './Globals.js';
+import { InitSharedGlobals, gWorkItemRESTClient } from './Globals.js';
 import { GetUserConfig, InitializeConfiguration, IsFieldShownByUserConfig, 
     UpdateConfigDialogFieldSuggestions, GetConfigDialog, SetRateNoticeDate } from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
@@ -67,6 +67,19 @@ let gAllUpdateTables = null;
  */
 
 
+/**
+ * @typedef FieldProperties
+ * @type {object}
+ * @property {import("azure-devops-extension-api/WorkItemTracking/WorkItemTracking").WorkItemField} workItemField
+ *    See https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemfield
+ * @property {import("azure-devops-extension-api/WorkItemTracking/WorkItemTracking").LargeTextCustomHtmlFormat | null} multilineFieldsFormat
+ *    See https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitem#azure-devops-extension-api-workitem-multilinefieldsformat
+ *    If the field is a multiline field (that shows its content in html) but it is written in markdown, this is 
+ *    set to `LargeTextCustomHtmlFormat.Markdown`. If the content is written in html, it is either set to
+ *    `LargeTextCustomHtmlFormat.Html` or null.
+ */
+
+
 function GetHtmlDisplayField()
 {
     return GetHtmlElement('html-div-diff');
@@ -80,6 +93,7 @@ function SetHtmlToLoading()
 
 
 /**
+ * @param {{ [key: string]: FieldProperties }} fieldsPropertiesMap Info about each field type.
  * @returns {Promise<UpdateTables[]>}
  */
 async function GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap, currentProjectName)
@@ -152,8 +166,10 @@ function CanUpdatesBeMerged(update1, update2)
 }
 
 
-// Returns an object, where the property name is the work-item-field-type's referenceName such as 'System.Description', and the value is
-// a WorkItemField: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemfield
+/**
+ * Returns an object, where the property name is the work-item-field-type's referenceName such as 'System.Description', and the value is
+ * a WorkItemField: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemfield
+ */ 
 async function GetMapOfFieldProperties(workItemFormService)
 {
     // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iworkitemformservice#azure-devops-extension-api-iworkitemformservice-getfields
@@ -166,10 +182,16 @@ async function GetMapOfFieldProperties(workItemFormService)
     // Note that getFields() doesn't actually seem to issue a REST request because the information is already on the client.
     const propertiesOfAllFields = await workItemFormService.getFields();
 
+    /** @type {{ [key: string]: FieldProperties }} */
     let map = {};
-    for (const fieldProp of propertiesOfAllFields) {
+    for (const rawFieldProp of propertiesOfAllFields) {
+        /** @type {import("azure-devops-extension-api/WorkItemTracking/WorkItemTracking").WorkItemField} */
+        const fieldProp = rawFieldProp;
         if (fieldProp?.referenceName) {
-            map[fieldProp.referenceName] = fieldProp;
+            map[fieldProp.referenceName] = {
+                workItemField: fieldProp,
+                multilineFieldsFormat: null // Set later
+            };
         }
     }
 
@@ -270,6 +292,24 @@ async function LoadAndSetDiffInHTMLDocument()
 
 
 /**
+ * @param {{ [key: string]: FieldProperties }} fieldsPropertiesMap Info about each field type.
+ * @param {import("azure-devops-extension-api/WorkItemTracking/WorkItemTracking").WorkItem} workItem 
+ *   https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitem
+ */
+function UpdateFieldsPropertiesMapWithMultilineInfo(fieldsPropertiesMap, workItem)
+{
+    if (!workItem?.multilineFieldsFormat) {
+        return;
+    }
+    for (const [fieldReferenceName, multilineFieldsFormat] of Object.entries(workItem.multilineFieldsFormat)) {
+        if (fieldsPropertiesMap.hasOwnProperty(fieldReferenceName)) {
+            fieldsPropertiesMap[fieldReferenceName].multilineFieldsFormat = multilineFieldsFormat;
+        }
+    }
+}
+
+
+/**
  * Retrieves the work item updates from the server and applies the filters. Does not yet build any html.
  * @returns {Promise<UpdateTables[]>}
  */
@@ -289,10 +329,13 @@ async function LoadAllUpdatesFromServer()
         GetMapOfFieldProperties(workItemFormService)
     ]);
 
-    const [revisionUpdates, comments] = await Promise.all([
+    const [revisionUpdates, comments, workItem] = await Promise.all([
         GetAllRevisionUpdates(workItemId, projectName),
-        GetCommentsWithHistory(workItemId, projectName)
+        GetCommentsWithHistory(workItemId, projectName),
+        gWorkItemRESTClient.getWorkItem(workItemId)
     ]);
+
+    UpdateFieldsPropertiesMapWithMultilineInfo(fieldsPropertiesMap, workItem);
 
     const allUpdateTables = await GetFullUpdateTables(comments, revisionUpdates, fieldsPropertiesMap, projectName);
     await FilterTablesInPlace(allUpdateTables);

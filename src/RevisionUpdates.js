@@ -16,9 +16,12 @@ import htmldiff from 'htmldiff';
 // https://github.com/microsoft/azure-devops-node-api/blob/fa534aef7d79ab4a30ae2b8823654795b6eed1aa/api/interfaces/WorkItemTrackingInterfaces.ts#L460
 import { FieldType as FieldTypeEnum } from 'azure-devops-extension-api/WorkItemTracking';
 
+// https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/largetextcustomhtmlformat
+import { LargeTextCustomHtmlFormat } from 'azure-devops-extension-api/WorkItemTracking/WorkItemTracking';
 
 
 /**
+ * @param {{ [key: string]: import('./HistoryDiffPageScript').FieldProperties }} fieldsPropertiesMap Info about each field type.
  * @returns {Promise<import('./HistoryDiffPageScript').UpdateTables[]>}
  */
 export async function GetTableInfosForEachRevisionUpdate(revisionUpdates, fieldsPropertiesMap, currentProjectName) 
@@ -63,6 +66,9 @@ const hiddenFields = [
 ];
 
 
+/**
+ * @param {{ [key: string]: import('./HistoryDiffPageScript').FieldProperties }} fieldsPropertiesMap 
+ */
 async function GetTableInfosForSingleRevisionUpdate(fieldsPropertiesMap, currentProjectName, revUpdate)
 {
     // The work item revision 'revUpdate.rev' seems to get incremented only when a field changes. The 'id' gets 
@@ -249,6 +255,11 @@ function DiffHtmlText(oldValue, newValue)
 }
 
 
+/**
+ * 
+ * @param {{ [key: string]: import('./HistoryDiffPageScript').FieldProperties }} fieldsPropertiesMap 
+ * @param {string} fieldReferenceName
+ */
 function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
 {
     if (typeof value?.oldValue === 'undefined' && typeof value?.newValue === 'undefined') {
@@ -280,10 +291,33 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
 
     // Azure DevOps (at least 2019) reports identities (e.g. the 'System.CreatedBy' field) as 'FieldTypeEnum.String', but the 'isIdentity' flag is set.
     // An identity is probably an 'IdentityReference': https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/identityreference
-    let fieldType = fieldsPropertiesMap?.[fieldReferenceName]?.type;
-    if (fieldsPropertiesMap?.[fieldReferenceName]?.isIdentity) {
+    const fieldProperties = fieldsPropertiesMap?.[fieldReferenceName];
+    let fieldType = fieldProperties?.workItemField.type;
+    if (fieldProperties?.workItemField.isIdentity) {
         fieldType = FieldTypeEnum.Identity;
     }
+
+    // Since 2025, Azure DevOps Services supports markdown for html fields. The field type is still reported as html,
+    // even though the user might have switched it to markdown. Unfortunately, the time when the user switched to markdown
+    // is not reported in the revision history. We only have the information that the most recent revision uses markdown.
+    // So, assuming that the field wasn't markdown from the start, at some revision update the `value.oldValue` is given
+    // in html while the new `value.newValue` is given in markdown. Moreover, current ADO does not provide an API to
+    // get the rendered markdown as html. Corresponding feature request: 
+    // https://developercommunity.visualstudio.com/t/Rendered-HTML-for-the-markdown-data-for/10940310
+    // Note that this is different compared to the the markdown support in comments, where we do get the renderedText
+    // (see GetHtmlFromComment() somewhere else in the code).
+    // The whole markdown to html conversion is done on the client side by ADO. Doing it ourselves is not a real option:
+    // Using some library to do it won't work reliably because ADO uses some custom markdown extensions.
+    // 
+    // This presents 2 problems for us:
+    //   1) We would like to diff the rendered html (or at least give the user the choice if the html or the markdown should
+    //      be diffed), but we don't have any choice since we only have the markdown. -> Switch to FieldTypeEnum.String.
+    //   2) At some point in the history, the field might have been switched from html to markdown. We simply always diff
+    //      the raw html since we don't have the necessary information to detect html.
+    if (fieldType === FieldTypeEnum.Html && fieldProperties?.multilineFieldsFormat === LargeTextCustomHtmlFormat.Markdown) {
+        fieldType = FieldTypeEnum.String;
+    }
+
     // Note for picklists: It seems that they are used only for user-added fields. They appear as combo boxes.
     // Similar to identities, picklists are also identified via an additional flag in the 'WorkItemField' interface. So PicklistString,
     // PicklistDouble and PicklistInteger shouldn't appear in the switch below. Moreover, for some reason the 'isPicklist' property is missing 
@@ -310,11 +344,11 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         case FieldTypeEnum.PlainText:
         {
             // We simply feed htmldiff the values with escaped special characters, meaning that htmldiff should not see any HTML elements.
-            // Using a different diff-library (jsdiff or diff-match-patch) is not worth the additional dependency, since the only work item
-            // fields that contain a significant amount of text are html elements.
+            // Using a different diff-library (jsdiff or diff-match-patch) is not worth the additional dependency.
             // But beforehand we replace newline characters with '<br>' to get a good diff if line breaks exist. By default, ADO uses a 
             // single line for 'String' and 'PlainText' fields. However, we want to support extensions such as
             // https://marketplace.visualstudio.com/items?itemName=krypu.multiline-plain-text-field that do display multiple lines.
+            // Also, ADO Services in 2025 started supporting markdown instead of html.
             const newLineRegex = /(?:\r\n|\r|\n)/g;
             const oldValue = EscapeHtml(value.oldValue ?? '').replace(newLineRegex, '<br>');
             const newValue = EscapeHtml(value.newValue ?? '').replace(newLineRegex, '<br>');
@@ -348,6 +382,10 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
 }
 
 
+/**
+ * @param {{ [key: string]: import('./HistoryDiffPageScript').FieldProperties }} fieldsPropertiesMap 
+ * @param {string} fieldReferenceName
+ */
 function GetFriendlyFieldName(fieldsPropertiesMap, fieldReferenceName) 
 {
     // The 'System.History' field represents the comments, but is named 'history' (probably for historic reasons).
@@ -355,7 +393,7 @@ function GetFriendlyFieldName(fieldsPropertiesMap, fieldReferenceName)
         return 'Comment';
     }
 
-    return EscapeHtml(fieldsPropertiesMap?.[fieldReferenceName].name);
+    return EscapeHtml(fieldsPropertiesMap?.[fieldReferenceName].workItemField.name);
 }
 
 
