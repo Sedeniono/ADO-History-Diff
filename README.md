@@ -86,9 +86,20 @@ String fields are diffed as ordinary strings (actually, using the same library, 
 For all other field types, computing a diff makes no sense and the entire old and new values are shown directly.
 The extension also shows the comments of new relations/links, but only the newest version of the comment text. ADO does not provide an API to query the history of relation/link comments (in contrast to the work item comments).
 
+For [comments that were entered in markdown](https://devblogs.microsoft.com/devops/markdown-editor-for-comments-preview/), the rendered html is diffed.
+The html instead of the raw markdown is diffed since the comment might have been in html originally, and ADO provides no information when a comment was switched to markdown. But fortunately, ADO provides an API to consistently get the rendered html.  
+On the other hand, for [non-comment fields that use markdown](https://devblogs.microsoft.com/devops/markdown-for-large-text-fields-private-preview/), the raw markdown is diffed.
+Again, ADO does not provide any information on when the user switched to markdown.
+However, ADO also currently does not expose any API that allows the extension to get the rendered html (in contrast to comments, which has such an API).
+The extension makes a best guess to detect when older versions of a field were originally in html and then diffs them as html, and starting with the revision where the user switched to markdown, the raw content of the field is diffed.
+
 Removed/old fragments are highlighted with a red background, new fragments with a green background.
 The extension is aware of the dark mode theme and uses appropriate colors.
 Note: Changing the theme in Azure DevOps (light to dark or vice versa) might not immediately change all colors. The page should be reloaded after changing the theme.
+
+Users are shown a "please rate" notice 30 days after they opened the history tab for the first time, with links to the GitHub page and the marketplace.
+This notice appears at the top of the history.
+It can be simply closed and will not appear again.
 
 
 ## Configuration
@@ -326,7 +337,6 @@ Currently, I am aware of the following possibilities to cope with this issue:
 
 # Future ideas
 * Show pure formatting changes better. Implement it in my fork [Sedeniono/htmldiff.js](https://github.com/Sedeniono/htmldiff.js)? Or use Wikipedia's [VisualDiff](https://www.mediawiki.org/wiki/Special:MyLanguage/visual_diffs) from the [VisualEditor](https://github.com/wikimedia/mediawiki-extensions-VisualEditor) (but has more dependencies). Or port [DaisyDiff](https://github.com/DaisyDiff/DaisyDiff).
-* Once [markdown is available in Azure DevOps work items](https://developercommunity.visualstudio.com/t/add-markdown-support-in-discussions/365826), support it.
 * Support GitHub and remote work item links.
 * Support test cases (`Microsoft.VSTS.TCM.Steps`, `Microsoft.VSTS.TCM.LocalDataSource`, `Microsoft.VSTS.TCM.Parameters`).
 * Localization of hardcoded strings.
