@@ -20,6 +20,9 @@ import { FieldType as FieldTypeEnum } from 'azure-devops-extension-api/WorkItemT
 import { LargeTextCustomHtmlFormat } from 'azure-devops-extension-api/WorkItemTracking/WorkItemTracking';
 
 
+const gRegexToDetectHtml = /^[ \t]*(?:<div\b[^>]*>|<h[1-6]\b[^>]*>|<style\b[^>]*>)/i;
+
+
 /**
  * @param {{ [key: string]: import('./HistoryDiffPageScript').FieldProperties }} fieldsPropertiesMap Info about each field type.
  * @returns {Promise<import('./HistoryDiffPageScript').UpdateTables[]>}
@@ -297,25 +300,49 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
         fieldType = FieldTypeEnum.Identity;
     }
 
-    // Since 2025, Azure DevOps Services supports markdown for html fields. The field type is still reported as html,
-    // even though the user might have switched it to markdown. Unfortunately, the time when the user switched to markdown
-    // is not reported in the revision history. We only have the information that the most recent revision uses markdown.
-    // So, assuming that the field wasn't markdown from the start, at some revision update the `value.oldValue` is given
-    // in html while the new `value.newValue` is given in markdown. Moreover, current ADO does not provide an API to
-    // get the rendered markdown as html. Corresponding feature request: 
-    // https://developercommunity.visualstudio.com/t/Rendered-HTML-for-the-markdown-data-for/10940310
-    // Note that this is different compared to the the markdown support in comments, where we do get the renderedText
-    // (see GetHtmlFromComment() somewhere else in the code).
-    // The whole markdown to html conversion is done on the client side by ADO. Doing it ourselves is not a real option:
-    // Using some library to do it won't work reliably because ADO uses some custom markdown extensions.
+    // Since 2025, Azure DevOps Services supports markdown for html fields. There are several challenges with the
+    // current API (at least at the current date of Oct. 2025):
     // 
-    // This presents 2 problems for us:
-    //   1) We would like to diff the rendered html (or at least give the user the choice if the html or the markdown should
-    //      be diffed), but we don't have any choice since we only have the markdown. -> Switch to FieldTypeEnum.String.
-    //   2) At some point in the history, the field might have been switched from html to markdown. We simply always diff
-    //      the raw html since we don't have the necessary information to detect html.
+    // The field type is still reported as html, even though the user might have switched it to markdown. Instead,
+    // the work item itself carries the information (in `multilineFieldsFormat`) if a "html" field is actually
+    // markdown or html.
+    // -> We query the work item somewhere else and pass the information of `multilineFieldsFormat` to us here.
+    //
+    // Moreover, current ADO does not provide an API to get the markdown as rendered html. Corresponding feature request: 
+    // https://developercommunity.visualstudio.com/t/Rendered-HTML-for-the-markdown-data-for/10940310
+    // Note that this is different compared to the the markdown support in comments, where we do get the `renderedText`
+    // (see GetHtmlFromComment() somewhere else in the code). The whole markdown to html conversion is done on the client
+    // side by ADO. Doing it ourselves is not a real option: Using some library to do it won't work reliably because ADO
+    // uses some custom markdown extensions.
+    // -> If we detect markdown, we simply diff the raw markdown text instead of doing an html diff by switching to
+    //    FieldTypeEnum.String. (In principle it would be nice to give the user the choice if the raw "source" code or
+    //    the rendered html should be diffed, but currently this is impossible.)
+    //
+    // Another issue: The time when the user switched to markdown is not reported in the revision history. We only have 
+    // the info that the most recent revision uses markdown. So, assuming that the field was html at the start and the
+    // user switched to markdown, at some revision update the `value.oldValue` is given in html while the new 
+    // `value.newValue` is given in markdown. There is no API to detect this switch-over point.
+    // -> We attempt to detect this. Specifically, if either the old or new value does not look like html, we do a raw
+    //    diff instead of an html diff (since we cannot convert the markdown to html). So the raw html elements (<div>,
+    //    <p>, etc.) will appear in the history, but that is the best we can do.
+    //    To detect html: The usual start of html content in ADO is either a <div> or a heading. So we check for them.
+    //    We additionally check for <style> since some tools insert it (see comment in DiffHtmlText()).
+    //    There is one real problem with this: A markdown text can use html elements and it will be rendered as html.
+    //    So if the user starts the markdown with e.g. <h1>, we will mistakenly detect it as html. We guess that this
+    //    is rare and that it is more important to get a proper html diff before the switch-over point to markdown in
+    //    the history.
+    //    Another theoretical issue is that the value can contain arbitrary html (e.g. when external tools created the
+    //    content). So it might start with other html elements. But this is hopefully rare. We don't attempt to detect
+    //    arbitrary html elements (`<...>`) to minimize the number of false positives.
+    //
+    // Also note that currently ADO does not provide a way in the UI to switch back to html once markdown is used, but
+    // the REST API actually allows it; we ignore this case since it should be very rare.
     if (fieldType === FieldTypeEnum.Html && fieldProperties?.multilineFieldsFormat === LargeTextCustomHtmlFormat.Markdown) {
-        fieldType = FieldTypeEnum.String;
+        const oldValueIsHtml = !value?.oldValue || gRegexToDetectHtml.test(value.oldValue);
+        const newValueIsHtml = !value?.newValue || gRegexToDetectHtml.test(value.newValue);
+        if (!oldValueIsHtml || !newValueIsHtml) {
+            fieldType = FieldTypeEnum.String;
+        }
     }
 
     // Note for picklists: It seems that they are used only for user-added fields. They appear as combo boxes.
