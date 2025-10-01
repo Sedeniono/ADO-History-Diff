@@ -375,12 +375,17 @@ function GetDiffFromUpdatedField(fieldsPropertiesMap, fieldReferenceName, value)
             // But beforehand we replace newline characters with '<br>' to get a good diff if line breaks exist. By default, ADO uses a 
             // single line for 'String' and 'PlainText' fields. However, we want to support extensions such as
             // https://marketplace.visualstudio.com/items?itemName=krypu.multiline-plain-text-field that do display multiple lines.
-            // Also, ADO Services in 2025 started supporting markdown instead of html.
+            // Also, ADO Services in 2025 started supporting markdown instead of html, and newlines are important there, too.
+            // Additionally, we want to preserve multiple spaces, so we temporarily replace them with a special marker for the diff,
+            // and then revert the marker back afterwards and apply the `pre-wrap` style. (Note: There is no breakable space that
+            // does not get collapsed in html and that matches the width of a normal space; `pre-wrap` is the way to go.)
             const newLineRegex = /(?:\r\n|\r|\n)/g;
-            const oldValue = EscapeHtml(value.oldValue ?? '').replace(newLineRegex, '<br>');
-            const newValue = EscapeHtml(value.newValue ?? '').replace(newLineRegex, '<br>');
-            const diff = htmldiff(oldValue, newValue, 'diff-class');
-            return diff;
+            const spaceMarker = '&SPCMARK;';
+            const oldValue = EscapeHtml(value.oldValue ?? '').replace(newLineRegex, '<br>').replaceAll(' ', spaceMarker);
+            const newValue = EscapeHtml(value.newValue ?? '').replace(newLineRegex, '<br>').replaceAll(' ', spaceMarker);
+            let diff = htmldiff(oldValue, newValue, 'diff-class');
+            diff = diff.replaceAll(spaceMarker, ' ');
+            return `<div style="white-space: pre-wrap;">${diff}</div>`;
         }
 
         case FieldTypeEnum.Integer:
