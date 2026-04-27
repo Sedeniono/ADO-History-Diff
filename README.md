@@ -1,9 +1,5 @@
 # Azure DevOps History Diff <!-- omit in toc -->
 
-[![Marketplace rating](https://img.shields.io/visual-studio-marketplace/stars/Sedenion.HistoryDiff?label=Marketplace%3A%20Rating&color=green)](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff)
-[![Marketplace installs](https://img.shields.io/visual-studio-marketplace/azure-devops/installs/total/Sedenion.HistoryDiff?label=Installs)](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff)
-
-
 - [Introduction](#introduction)
 - [Basic installation and requirements](#basic-installation-and-requirements)
 - [Details about the new "History" tab](#details-about-the-new-history-tab)
