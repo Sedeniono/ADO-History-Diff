@@ -148,7 +148,7 @@ export async function TryGetHTMLLinkNameAndUrlForArtifactLink(currentProjectName
             }
         };
 
-        return parsers[artifactTool]?.[artifactType]?.(artifactLink, artifactId, currentProjectName);
+        return await parsers[artifactTool]?.[artifactType]?.(artifactLink, artifactId, currentProjectName);
     }
     catch (ex) {
         console.log(`HistoryDiff: Exception while parsing artifact link '${artifactLink}': ${ex}`);
