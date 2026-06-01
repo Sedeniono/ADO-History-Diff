@@ -45,8 +45,8 @@ Please see the sections below for more details on how to install the extension.
 
 **Requirements:**
 * Azure DevOps:
-  * On-premise: [Azure DevOps Server](https://azure.microsoft.com/en-us/products/devops/server) 2019, 2020 or 2022. (Tested with 2019.1.2, 2020.1.2 and 2022.1.)
-  * Also supports the cloud variation [Azure DevOps Services](https://azure.microsoft.com/en-us/products/devops)
+  * On-premise: [Azure DevOps Server](https://azure.microsoft.com/en-us/products/devops/server) 2019, 2020 or 2022. Moreover, "Azure DevOps Server" without a version number (first released in 2025) is also supported. Future versions should also work.
+  * Also supports the cloud variation [Azure DevOps Services](https://azure.microsoft.com/en-us/products/devops).
 * Users should use a reasonably recent browser (year >2020). Tested with Edge, Chrome and Firefox.
 
 
