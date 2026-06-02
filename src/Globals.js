@@ -4,7 +4,7 @@
 // @ts-check
 
 import { WorkItemTrackingRestClient } from 'azure-devops-extension-api/WorkItemTracking';
-import { CommonServiceIds } from 'azure-devops-extension-api/Common';
+import { CommonServiceIds, getClient } from 'azure-devops-extension-api/Common';
 
 
 // WorkItemTrackingRestClient: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient
@@ -14,11 +14,11 @@ export var gWorkItemRESTClient;
 export var gLocationService;
 
 
-export async function InitSharedGlobals(adoSDK, adoAPI)
+export async function InitSharedGlobals(adoSDK)
 {
     gLocationService = await adoSDK.getService(CommonServiceIds.LocationService);
     
     // getClient(): https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/#azure-devops-extension-api-getclient
     // Gives a WorkItemTrackingRestClient: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient
-    gWorkItemRESTClient = adoAPI.getClient(WorkItemTrackingRestClient);
+    gWorkItemRESTClient = getClient(WorkItemTrackingRestClient);
 }

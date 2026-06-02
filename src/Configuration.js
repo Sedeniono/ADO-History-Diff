@@ -4,7 +4,7 @@
 // @ts-check
 
 import { CommonServiceIds } from 'azure-devops-extension-api/Common';
-import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils.js';
+import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils';
 
 // @ts-ignore (webpack magic)
 import CollapseSvg from '../images/divider-collapse-horizontal-icon.svg';

@@ -4,7 +4,7 @@
 // @ts-check
 
 import { COMMENT_UPDATE_ID, GetCommentsWithHistory, GetTableInfosForEachComment } from './Comments';
-import { InitSharedGlobals, gWorkItemRESTClient } from './Globals.js';
+import { InitSharedGlobals, gWorkItemRESTClient } from './Globals';
 import { GetUserConfig, InitializeConfiguration, IsFieldShownByUserConfig, 
     UpdateConfigDialogFieldSuggestions, GetConfigDialog, SetRateNoticeDate } from './Configuration';
 import { GetAllRevisionUpdates, GetTableInfosForEachRevisionUpdate } from './RevisionUpdates';
@@ -12,8 +12,8 @@ import { InitializeCutouts, ShowOrHideUnchangedLinesDependingOnConfiguration } f
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace, GetHtmlElement } from './Utils';
 import { GetLineHeightInPixel } from './GenerateCutoutsWithContext';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
+import { CommonServiceIds } from 'azure-devops-extension-api/Common';
 import * as adoSDK from 'azure-devops-extension-sdk';
-import * as adoAPI from 'azure-devops-extension-api';
 
 
 var gUnloadedCalled = false;
@@ -202,7 +202,7 @@ async function GetMapOfFieldProperties(workItemFormService)
 async function GetProjectName()
 {
     // projectService = IProjectPageService: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectpageservice
-    const projectService = await adoSDK.getService(adoAPI.CommonServiceIds['ProjectPageService']);
+    const projectService = await adoSDK.getService(CommonServiceIds.ProjectPageService);
     // project = IProjectInfo: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectinfo
     const project = await projectService.getProject();
     return project.name;
@@ -740,7 +740,7 @@ async function InitializeHistoryDiff()
     });
 
     InitializeConfiguration(adoSDK, LoadAndSetDiffInHTMLDocumentOnceVisible, ShowOrHideUnchangedLinesDependingOnConfiguration);    
-    await InitSharedGlobals(adoSDK, adoAPI);
+    await InitSharedGlobals(adoSDK);
 
     // We first get the work item revisions from ADO, and only then tell ADO that we have loaded successfully.
     // This causes ADO to show the 'spinning loading indicator' until we are ready.
