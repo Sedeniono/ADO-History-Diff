@@ -16,7 +16,7 @@ import { CommonServiceIds } from 'azure-devops-extension-api/Common';
 import * as adoSDK from 'azure-devops-extension-sdk';
 
 
-var gUnloadedCalled = false;
+let gUnloadedCalled = false;
 
 /** @type {?IntersectionObserver} */
 let gVisibilityObserver = null;
