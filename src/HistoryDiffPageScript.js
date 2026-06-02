@@ -12,10 +12,10 @@ import { InitializeCutouts, ShowOrHideUnchangedLinesDependingOnConfiguration } f
 import { FormatDate, GetIdentityAvatarHtml, GetIdentityName, FilterInPlace, GetHtmlElement } from './Utils';
 import { GetLineHeightInPixel } from './GenerateCutoutsWithContext';
 import { WorkItemTrackingServiceIds } from 'azure-devops-extension-api/WorkItemTracking';
+import * as adoSDK from 'azure-devops-extension-sdk';
+import * as adoAPI from 'azure-devops-extension-api';
 
 
-var gAdoSDK;
-var gAdoAPI;
 var gUnloadedCalled = false;
 
 /** @type {?IntersectionObserver} */
@@ -70,9 +70,9 @@ let gAllUpdateTables = null;
 /**
  * @typedef FieldProperties
  * @type {object}
- * @property {import("azure-devops-extension-api/WorkItemTracking/WorkItemTracking").WorkItemField} workItemField
+ * @property {import("azure-devops-extension-api/WorkItemTracking").WorkItemField} workItemField
  *    See https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemfield
- * @property {import("azure-devops-extension-api/WorkItemTracking/WorkItemTracking").LargeTextCustomHtmlFormat | null} multilineFieldsFormat
+ * @property {import("azure-devops-extension-api/WorkItemTracking").LargeTextCustomHtmlFormat | null} multilineFieldsFormat
  *    See https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitem#azure-devops-extension-api-workitem-multilinefieldsformat
  *    If the field is a multiline field (that shows its content in html) but it is written in markdown, this is 
  *    set to `LargeTextCustomHtmlFormat.Markdown`. If the content is written in html, it is either set to
@@ -185,7 +185,7 @@ async function GetMapOfFieldProperties(workItemFormService)
     /** @type {{ [key: string]: FieldProperties }} */
     let map = {};
     for (const rawFieldProp of propertiesOfAllFields) {
-        /** @type {import("azure-devops-extension-api/WorkItemTracking/WorkItemTracking").WorkItemField} */
+        /** @type {import("azure-devops-extension-api/WorkItemTracking").WorkItemField} */
         const fieldProp = rawFieldProp;
         if (fieldProp?.referenceName) {
             map[fieldProp.referenceName] = {
@@ -202,7 +202,7 @@ async function GetMapOfFieldProperties(workItemFormService)
 async function GetProjectName()
 {
     // projectService = IProjectPageService: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectpageservice
-    const projectService = await gAdoSDK.getService(gAdoAPI.CommonServiceIds['ProjectPageService']);
+    const projectService = await adoSDK.getService(adoAPI.CommonServiceIds['ProjectPageService']);
     // project = IProjectInfo: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/iprojectinfo
     const project = await projectService.getProject();
     return project.name;
@@ -293,7 +293,7 @@ async function LoadAndSetDiffInHTMLDocument()
 
 /**
  * @param {{ [key: string]: FieldProperties }} fieldsPropertiesMap Info about each field type.
- * @param {import("azure-devops-extension-api/WorkItemTracking/WorkItemTracking").WorkItem} workItem 
+ * @param {import("azure-devops-extension-api/WorkItemTracking").WorkItem} workItem 
  *   https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitem
  */
 function UpdateFieldsPropertiesMapWithMultilineInfo(fieldsPropertiesMap, workItem)
@@ -320,7 +320,7 @@ async function LoadAllUpdatesFromServer()
     // Not stored as global variable during initialization because the instance is tied to a certain work item,
     // and when the 'onLoaded' event is called, we might have switched to another work item. So need to get it again.
     const [workItemFormService, projectName] = await Promise.all([
-        gAdoSDK.getService(WorkItemTrackingServiceIds.WorkItemFormService), 
+        adoSDK.getService(WorkItemTrackingServiceIds.WorkItemFormService), 
         GetProjectName()
     ]);
     
@@ -612,7 +612,7 @@ function IsDarkModeActive()
     // would need additional rights to read the user settings (scope 'vso.settings'). Using an undocumented API and requiring
     // additional rights seems like a bad choice. 
     //
-    // There is also 'gAdoSDK.getPageContext().globalization.theme', but 'getPageContext()' always threw an error for me, 
+    // There is also 'adoSDK.getPageContext().globalization.theme', but 'getPageContext()' always threw an error for me, 
     // complaining about init() not having finished (although it should have).
     //
     // So instead we simply read the text color and guess the theme from there.
@@ -715,7 +715,7 @@ function CreateWorkItemPageEvents()
 // encountered. For example, if there are two successive bugs, the user shows the history diff on the first bug,
 // then moves on to the next bug, ADO will show immediately our history diff tab, but this function is not called
 // again. Instead, the 'onUnloaded' and 'onLoaded' events are called (see CreateWorkItemPageEvents()).
-async function InitializeHistoryDiff(adoSDK, adoAPI)
+async function InitializeHistoryDiff()
 {
     // Called by the ADO API after the client received and applied the ADO theme. Also called when the user changes the theme
     // while our extension is already loaded. The event doesn't seem to be documented, but it can be seen in the source:
@@ -739,9 +739,6 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
         return CreateWorkItemPageEvents();
     });
 
-    gAdoSDK = adoSDK;
-    gAdoAPI = adoAPI;
-
     InitializeConfiguration(adoSDK, LoadAndSetDiffInHTMLDocumentOnceVisible, ShowOrHideUnchangedLinesDependingOnConfiguration);    
     await InitSharedGlobals(adoSDK, adoAPI);
 
@@ -756,15 +753,6 @@ async function InitializeHistoryDiff(adoSDK, adoAPI)
 }
 
 
-// Using 'import' instead of 'require' doesn't work with these two dependencies. The SDK gets bundled
-// by webpack twice, which causes an error because the SDK has side effects.
-// See https://stackoverflow.com/q/78210363/3740047, https://github.com/microsoft/azure-devops-extension-api/issues/109
-// and https://github.com/microsoft/azure-devops-extension-api/pull/126.
-require(['azure-devops-extension-sdk', 
-         'azure-devops-extension-api'
-        ], 
-        // @ts-ignore
-        function (adoSDK, adoAPI) {
-            InitializeHistoryDiff(adoSDK, adoAPI);
-        }
-);
+
+
+InitializeHistoryDiff();

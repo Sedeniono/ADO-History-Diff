@@ -3,7 +3,7 @@
 
 // @ts-check
 
-import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServices';
+import { CommonServiceIds } from 'azure-devops-extension-api/Common';
 import { StringsMatchCaseInsensitiveWithWildcard, GetHtmlElement } from './Utils.js';
 
 // @ts-ignore (webpack magic)

@@ -17,7 +17,7 @@ import htmldiff from 'htmldiff';
 import { FieldType as FieldTypeEnum } from 'azure-devops-extension-api/WorkItemTracking';
 
 // https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/largetextcustomhtmlformat
-import { LargeTextCustomHtmlFormat } from 'azure-devops-extension-api/WorkItemTracking/WorkItemTracking';
+import { LargeTextCustomHtmlFormat } from 'azure-devops-extension-api/WorkItemTracking';
 
 
 const gRegexToDetectHtml = /^[ \t]*(?:<div\b[^>]*>|<h[1-6]\b[^>]*>|<style\b[^>]*>)/i;

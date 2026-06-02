@@ -4,7 +4,7 @@
 // @ts-check
 
 import { WorkItemTrackingRestClient } from 'azure-devops-extension-api/WorkItemTracking';
-import { CommonServiceIds } from 'azure-devops-extension-api/Common/CommonServices';
+import { CommonServiceIds } from 'azure-devops-extension-api/Common';
 
 
 // WorkItemTrackingRestClient: https://learn.microsoft.com/en-us/javascript/api/azure-devops-extension-api/workitemtrackingrestclient
