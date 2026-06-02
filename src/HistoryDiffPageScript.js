@@ -754,5 +754,5 @@ async function InitializeHistoryDiff()
 
 
 
+InitializeHistoryDiff().catch(adoSDK.notifyLoadFailed);
 
-InitializeHistoryDiff();
