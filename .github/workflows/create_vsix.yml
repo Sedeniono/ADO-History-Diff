@@ -14,9 +14,9 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v6.4.0
       with:
         node-version: 20
 
@@ -30,7 +30,7 @@ jobs:
       run: npm run build
 
     - name: Upload vsix package
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7.0.1
       with:
         name: release_vsix_zip
         path: ./*.vsix
