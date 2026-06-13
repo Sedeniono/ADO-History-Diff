@@ -1,5 +1,9 @@
 # Azure DevOps History Diff <!-- omit in toc -->
 
+[![ko-fi](https://img.shields.io/badge/Ko--fi-Leave_a_tip-ff5a16?logo=ko-fi)](https://ko-fi.com/sedeniono)
+&nbsp;
+[![PayPal](https://img.shields.io/badge/PayPal-Leave_a_tip-003087?logo=paypal)](https://paypal.me/sedeniono)
+
 - [Introduction](#introduction)
 - [Basic installation and requirements](#basic-installation-and-requirements)
 - [Details about the new "History" tab](#details-about-the-new-history-tab)
@@ -27,8 +31,7 @@ The standard history tab of work items in Azure DevOps (ADO) shows only the enti
 This makes spotting the difference very hard for fields that usually contain a lot of text; most prominently, the standard "Description" and "Repro Steps" fields as well as the comments.
 This extension adds a **new tab** to work items that shows the full history of every field, while computing an **appropriate diff** for each one. Optionally, the user can filter out uninteresting fields (e.g. related to work logging) and show only the changed lines in long texts.
 
-
-**If you like the extension, please give it a [star on GitHub](https://github.com/Sedeniono/ADO-History-Diff) and rate on the [Visual Studio marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff)!**
+**If the extension has helped with your work, you can support its continued development by leaving a tip via ko-fi ([ko-fi.com/sedeniono](https://ko-fi.com/sedeniono)) or PayPal ([paypal.me/sedeniono](https://paypal.me/sedeniono))**. You can also give it a [star on GitHub](https://github.com/Sedeniono/ADO-History-Diff) and rate it on the [Visual Studio marketplace](https://marketplace.visualstudio.com/items?itemName=Sedenion.HistoryDiff)!
 
 The left image shows the default ADO history, while the right depicts the history as shown by the extension:
 Changes to the text are much easier to spot.
